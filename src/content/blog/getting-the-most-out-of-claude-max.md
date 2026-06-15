@@ -18,7 +18,15 @@ I didn't measure this first. I'll be honest — I *felt* it. After enough hours 
 
 I've been experimenting with a small Rust CLI proxy that sits between the agent and the shell — it intercepts commands like `git status` and `git diff` and returns a compressed, token-efficient version of the output instead of the raw firehose. The model still gets everything it needs to act; it just stops paying rent on whitespace and boilerplate.
 
-I want to be careful here, because I'm still early with it and I distrust people who oversell their setups three days in. But the direction feels correct, and the numbers back it up: on routine dev operations I'm seeing 60–90% fewer tokens for the same work. That's not a rounding error. That's the difference between hitting the cap at hour three and never thinking about it again.
+I want to be careful here, because I'm still early with it and I distrust people who oversell their setups three days in. But the direction feels correct, and the numbers back it up. This is the meter after a single afternoon of normal work:
+
+```
+Total commands:    564
+Tokens saved:      134.8K (67.0%)
+Efficiency meter:  ████████████████░░░░░░░░ 67.0%
+```
+
+Two-thirds of the tokens those 564 commands would have spent simply never got spent. And the distribution is telling: a single `ps aux` saved 61K tokens on its own (98.6% of it was noise), `git diff` saved another 31K, the linters 95%+ each. None of that was reasoning. All of it was firehose. That's not a rounding error — that's the difference between hitting the cap at hour three and never thinking about it again.
 
 The part I didn't expect: it made the agent *better*, not just cheaper. A leaner context window means the model spends its attention on the actual problem instead of pattern-matching against three screens of log noise. Less in, more signal.
 
