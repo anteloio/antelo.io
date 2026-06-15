@@ -16,17 +16,60 @@ I didn't measure this first. I'll be honest — I *felt* it. After enough hours 
 
 ## What I'm trying right now
 
-I've been experimenting with a small Rust CLI proxy that sits between the agent and the shell — it intercepts commands like `git status` and `git diff` and returns a compressed, token-efficient version of the output instead of the raw firehose. The model still gets everything it needs to act; it just stops paying rent on whitespace and boilerplate.
+The tool I've been experimenting with is called **RTK — Rust Token Killer**. It's a small CLI proxy, written in Rust, that sits between the agent and your shell. When Claude Code goes to run something like `git status`, `git diff`, `ps aux`, or a linter, RTK intercepts it, runs the real command, and hands back a compressed, token-efficient version of the output instead of the raw firehose. The model still gets everything it needs to make a decision — it just stops paying rent on whitespace, ANSI codes, and boilerplate it was going to skim past anyway.
 
-I want to be careful here, because I'm still early with it and I distrust people who oversell their setups three days in. But the direction feels correct, and the numbers back it up. This is the meter after a single afternoon of normal work:
+### Setting it up
 
+The setup is refreshingly low-ceremony, and the key idea is that **you don't change how you work** — the rewriting is transparent. On a Mac it's two commands:
+
+```bash
+brew install rtk     # install the binary
+rtk init -g          # install the Claude Code hook + RTK.md globally
 ```
-Total commands:    564
-Tokens saved:      134.8K (67.0%)
-Efficiency meter:  ████████████████░░░░░░░░ 67.0%
+
+Then **restart Claude Code** so it picks up the hook. That hook is the part that makes RTK invisible: it intercepts outgoing Bash commands on the fly and rewrites them to their `rtk` equivalents before they run, so `git status` quietly becomes `rtk git status`. You write your commands normally; RTK does the interception with zero tokens of overhead on your side.
+
+To confirm it's actually live:
+
+```bash
+rtk --version       # should print the version
+rtk gain            # should print a savings report
 ```
 
-Two-thirds of the tokens those 564 commands would have spent simply never got spent. And the distribution is telling: a single `ps aux` saved 61K tokens on its own (98.6% of it was noise), `git diff` saved another 31K, the linters 95%+ each. None of that was reasoning. All of it was firehose. That's not a rounding error — that's the difference between hitting the cap at hour three and never thinking about it again.
+One gotcha worth flagging, because it cost me a few confused minutes: there's a *different* tool also called `rtk` (a "Rust Type Kit"). If `rtk gain` errors out, you've probably got the wrong binary shadowing it — check `which rtk`.
+
+That's genuinely the whole setup. No config files to babysit, no per-project tuning — you install it, hook it in once, and then forget it exists, which for infrastructure is the highest compliment I can pay. The source and full command reference live at [github.com/rtk-ai/rtk](https://github.com/rtk-ai/rtk).
+
+### What an afternoon looked like
+
+I want to be careful here, because I'm still early with it and I distrust people who oversell their setups three days in. But the direction feels correct, and the numbers back it up. This is `rtk gain` after a single afternoon of normal work:
+
+<div class="not-prose my-8 rounded-xl bg-[#0d1117] text-gray-200 text-[13px] leading-relaxed font-mono overflow-x-auto shadow-sm border border-gray-800">
+  <div class="px-5 py-4">
+    <div class="text-gray-100">RTK Token Savings <span class="text-gray-500">(Global Scope)</span></div>
+    <div class="text-gray-700">════════════════════════════════════════════</div>
+    <div class="mt-3 space-y-0.5">
+      <div><span class="text-gray-500">Total commands:</span> <span class="text-gray-100">564</span></div>
+      <div><span class="text-gray-500">Input tokens:</span>&nbsp;&nbsp;&nbsp;<span class="text-gray-100">201.4K</span></div>
+      <div><span class="text-gray-500">Output tokens:</span>&nbsp;&nbsp;<span class="text-gray-100">67.0K</span></div>
+      <div><span class="text-gray-500">Tokens saved:</span>&nbsp;&nbsp;&nbsp;<span class="text-emerald-400 font-semibold">134.8K (67.0%)</span></div>
+      <div><span class="text-gray-500">Total exec time:</span> <span class="text-gray-100">7m25s</span> <span class="text-gray-600">(avg 790ms)</span></div>
+      <div class="mt-1"><span class="text-gray-500">Efficiency:</span> <span class="text-emerald-400">████████████████</span><span class="text-gray-700">░░░░░░░░</span> <span class="text-emerald-400 font-semibold">67.0%</span></div>
+    </div>
+    <div class="mt-4 text-cyan-400">By Command</div>
+    <div class="mt-2 space-y-0.5 text-gray-400">
+      <div class="flex"><span class="w-6 text-gray-600">1.</span><span class="flex-1 text-cyan-300">rtk:toml ps aux</span><span class="w-16 text-right text-gray-200">61.4K</span><span class="w-16 text-right text-emerald-400">98.6%</span></div>
+      <div class="flex"><span class="w-6 text-gray-600">2.</span><span class="flex-1 text-cyan-300">rtk git diff</span><span class="w-16 text-right text-gray-200">31.3K</span><span class="w-16 text-right text-emerald-400">46.5%</span></div>
+      <div class="flex"><span class="w-6 text-gray-600">3.</span><span class="flex-1 text-cyan-300">rtk read</span><span class="w-16 text-right text-gray-200">8.7K</span><span class="w-16 text-right text-emerald-400">3.8%</span></div>
+      <div class="flex"><span class="w-6 text-gray-600">4.</span><span class="flex-1 text-cyan-300">rtk diff</span><span class="w-16 text-right text-gray-200">2.8K</span><span class="w-16 text-right text-emerald-400">94.9%</span></div>
+      <div class="flex"><span class="w-6 text-gray-600">5.</span><span class="flex-1 text-cyan-300">rtk git log --oneline…</span><span class="w-16 text-right text-gray-200">2.5K</span><span class="w-16 text-right text-emerald-400">71.3%</span></div>
+      <div class="flex"><span class="w-6 text-gray-600">6.</span><span class="flex-1 text-cyan-300">rtk git commit</span><span class="w-16 text-right text-gray-200">2.2K</span><span class="w-16 text-right text-emerald-400">98.7%</span></div>
+      <div class="flex"><span class="w-6 text-gray-600">7.</span><span class="flex-1 text-cyan-300">rtk lint eslint app/j…</span><span class="w-16 text-right text-gray-200">1.6K</span><span class="w-16 text-right text-emerald-400">95.8%</span></div>
+    </div>
+  </div>
+</div>
+
+Two-thirds of the tokens those 564 commands would have spent simply never got spent. And the distribution is telling: a single `ps aux` saved 61K tokens on its own — 98.6% of that output was noise — `git diff` saved another 31K, and the linters came in north of 95% each. None of that was reasoning. All of it was firehose. That's not a rounding error — that's the difference between hitting the cap at hour three and never thinking about it again.
 
 The part I didn't expect: it made the agent *better*, not just cheaper. A leaner context window means the model spends its attention on the actual problem instead of pattern-matching against three screens of log noise. Less in, more signal.
 
