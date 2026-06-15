@@ -20,8 +20,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 ---
 
-<Layout title={`${post.data.title} — Flavio Antelo`} description={post.data.description}>
-  <article class="max-w-2xl mx-auto px-6 pt-20 pb-24">
+<Layout title={`${post.data.title} · Flavio Antelo`} description={post.data.description}>
+  <article class="max-w-3xl mx-auto px-6 pt-20 pb-24">
     <a href="/blog" class="text-sm text-gray-400 hover:text-gray-900 transition-colors">← Blog</a>
     <header class="mt-8 mb-10">
       <p class="text-xs text-gray-400 mb-2">{dateFormatter.format(post.data.publishedAt)}</p>
