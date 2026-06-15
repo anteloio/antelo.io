@@ -1,0 +1,56 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Flavio Antelo — Freelance software engineer. I build agent loops that run businesses." } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/jpeg" href="/avatar.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-white text-gray-900 font-sans antialiased">
+    <header class="border-b border-gray-100">
+      <nav class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/" class="text-sm font-medium text-gray-900 hover:text-gray-600 transition-colors">
+          antelo.io
+        </a>
+        <div class="flex items-center gap-6">
+          <a href="/blog" class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Blog</a>
+          <a
+            href="https://wa.me/33766884815"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm bg-black text-white px-4 py-1.5 rounded-full hover:bg-gray-800 transition-colors"
+          >
+            Hire me
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="border-t border-gray-100 mt-24">
+      <div class="max-w-3xl mx-auto px-6 py-8 flex items-center justify-between">
+        <p class="text-sm text-gray-400">© 2025 Flavio Antelo</p>
+        <div class="flex items-center gap-4">
+          <a href="https://x.com/anteloio" target="_blank" rel="noopener noreferrer" class="text-sm text-gray-400 hover:text-gray-900 transition-colors">X</a>
+          <a href="https://github.com/anteloio" target="_blank" rel="noopener noreferrer" class="text-sm text-gray-400 hover:text-gray-900 transition-colors">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
