@@ -1,0 +1,961 @@
+---
+export const prerender = false
+
+import Layout from "../layouts/Layout.astro"
+import { db } from "../db"
+import { projects, timeEntries, locations, dayLocations } from "../db/schema"
+import { and, eq, gte, lte, sql } from "drizzle-orm"
+
+// --- date helpers (local, Monday-based week) ---
+const pad = (n: number) => String(n).padStart(2, "0")
+const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const addDays = (d: Date, n: number) => {
+  const x = new Date(d)
+  x.setDate(x.getDate() + n)
+  return x
+}
+const mondayOf = (d: Date) => {
+  const x = new Date(d)
+  x.setHours(0, 0, 0, 0)
+  const dow = (x.getDay() + 6) % 7 // 0 = Monday
+  return addDays(x, -dow)
+}
+
+// --- handle writes (POST), then redirect back to the same week (PRG) ---
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData()
+  const intent = form.get("intent")
+  const start = String(form.get("start") || "")
+
+  if (intent === "addProject") {
+    const name = String(form.get("name") || "").trim()
+    if (name) await db.insert(projects).values({ name })
+  } else if (intent === "setHours") {
+    const projectId = Number(form.get("projectId"))
+    const date = String(form.get("date") || "")
+    const hours = Number(form.get("hours"))
+    if (projectId && date) {
+      if (hours > 0) {
+        await db
+          .insert(timeEntries)
+          .values({ projectId, date, hours })
+          .onConflictDoUpdate({
+            target: [timeEntries.projectId, timeEntries.date],
+            set: { hours },
+          })
+      } else {
+        await db.delete(timeEntries).where(and(eq(timeEntries.projectId, projectId), eq(timeEntries.date, date)))
+      }
+    }
+  } else if (intent === "renameProject") {
+    const projectId = Number(form.get("projectId"))
+    const name = String(form.get("name") || "").trim()
+    const rateRaw = String(form.get("hourlyRate") || "").trim()
+    const hourlyRate = rateRaw === "" ? null : Number(rateRaw)
+    if (projectId && name) {
+      await db.update(projects).set({ name, hourlyRate }).where(eq(projects.id, projectId))
+    }
+  } else if (intent === "deleteProject") {
+    const projectId = Number(form.get("projectId"))
+    if (projectId) {
+      await db.delete(timeEntries).where(eq(timeEntries.projectId, projectId))
+      await db.delete(projects).where(eq(projects.id, projectId))
+    }
+  } else if (intent === "addLocation") {
+    const name = String(form.get("name") || "").trim()
+    if (name) await db.insert(locations).values({ name })
+  } else if (intent === "renameLocation") {
+    const locationId = Number(form.get("locationId"))
+    const name = String(form.get("name") || "").trim()
+    if (locationId && name) {
+      await db.update(locations).set({ name }).where(eq(locations.id, locationId))
+    }
+  } else if (intent === "deleteLocation") {
+    const locationId = Number(form.get("locationId"))
+    if (locationId) {
+      await db.delete(dayLocations).where(eq(dayLocations.locationId, locationId))
+      await db.delete(locations).where(eq(locations.id, locationId))
+    }
+  } else if (intent === "setDayLocation") {
+    const date = String(form.get("date") || "")
+    const locationId = Number(form.get("locationId"))
+    if (date) {
+      if (locationId > 0) {
+        await db.insert(dayLocations).values({ date, locationId }).onConflictDoUpdate({
+          target: dayLocations.date,
+          set: { locationId },
+        })
+      } else {
+        await db.delete(dayLocations).where(eq(dayLocations.date, date))
+      }
+    }
+  }
+
+  return Astro.redirect(`${Astro.url.pathname}${start ? `?start=${start}` : ""}`)
+}
+
+// --- read the week to show ---
+const startParam = Astro.url.searchParams.get("start")
+const base = startParam ? new Date(startParam + "T00:00:00") : new Date()
+const weekStart = mondayOf(base)
+const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+const startStr = fmt(weekStart)
+const endStr = fmt(weekDates[6])
+const todayStr = fmt(new Date())
+
+const prevStart = fmt(addDays(weekStart, -7))
+const nextStart = fmt(addDays(weekStart, 7))
+const thisStart = fmt(mondayOf(new Date()))
+
+const allProjects = await db.select().from(projects).orderBy(projects.name)
+const entries = await db
+  .select()
+  .from(timeEntries)
+  .where(and(gte(timeEntries.date, startStr), lte(timeEntries.date, endStr)))
+
+// map: `${projectId}:${date}` -> hours
+const hoursMap = new Map<string, number>()
+for (const e of entries) hoursMap.set(`${e.projectId}:${e.date}`, e.hours)
+
+// total entries per project (all time) — used in the delete confirmation label
+const counts = await db
+  .select({ projectId: timeEntries.projectId, n: sql<number>`count(*)` })
+  .from(timeEntries)
+  .groupBy(timeEntries.projectId)
+const countMap = new Map<number, number>()
+for (const c of counts) countMap.set(c.projectId, Number(c.n))
+
+// locations + the location assigned to each day of this week
+const allLocations = await db.select().from(locations).orderBy(locations.name)
+const locNameById = new Map(allLocations.map((l) => [l.id, l.name]))
+const dayLocs = await db
+  .select()
+  .from(dayLocations)
+  .where(and(gte(dayLocations.date, startStr), lte(dayLocations.date, endStr)))
+const dayLocMap = new Map<string, number>()
+for (const dl of dayLocs) dayLocMap.set(dl.date, dl.locationId)
+
+// how many days each location is assigned to (all time) — for the delete confirmation
+const locCounts = await db
+  .select({ locationId: dayLocations.locationId, n: sql<number>`count(*)` })
+  .from(dayLocations)
+  .groupBy(dayLocations.locationId)
+const locCountMap = new Map<number, number>()
+for (const c of locCounts) locCountMap.set(c.locationId, Number(c.n))
+
+const getHours = (projectId: number, date: string) => hoursMap.get(`${projectId}:${date}`)
+
+const dayTotal = (date: string) => allProjects.reduce((s, p) => s + (getHours(p.id, date) ?? 0), 0)
+const rowTotal = (projectId: number) => weekDates.reduce((s, d) => s + (getHours(projectId, fmt(d)) ?? 0), 0)
+const weekTotal = weekDates.reduce((s, d) => s + dayTotal(fmt(d)), 0)
+
+// money: hours x project hourly rate (only when a rate is set)
+const projectRate = new Map(allProjects.map((p) => [p.id, p.hourlyRate]))
+const rowMoney = (projectId: number) => {
+  const rate = projectRate.get(projectId)
+  return rate ? rowTotal(projectId) * rate : null
+}
+const weekMoney = allProjects.reduce((s, p) => s + (rowMoney(p.id) ?? 0), 0)
+const hasAnyRate = allProjects.some((p) => p.hourlyRate != null && p.hourlyRate > 0)
+const dayMoney = (date: string) =>
+  allProjects.reduce((s, p) => {
+    const rate = projectRate.get(p.id)
+    return s + (rate ? (getHours(p.id, date) ?? 0) * rate : 0)
+  }, 0)
+const fmtMoney = (v: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(v)
+
+const fmtHours = (h: number) => (Number.isInteger(h) ? String(h) : h.toFixed(1))
+const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" })
+const currentYear = new Date().getFullYear()
+// Show the year only when the date falls outside the current year.
+const withYear = (d: Date) =>
+  d.getFullYear() === currentYear ? monthDay.format(d) : `${monthDay.format(d)}, ${d.getFullYear()}`
+const rangeLabel = `${withYear(weekStart)} – ${withYear(weekDates[6])}`
+const quick = [2, 4, 8]
+
+// Smart week label: "This week" / "Last week" / "Next week", else the date range.
+const weekRangeFull = `${withYear(weekStart)} - ${withYear(weekDates[6])}`
+const weekOffset = Math.round((weekStart.getTime() - mondayOf(new Date()).getTime()) / (7 * 86400000))
+const weekLabel =
+  weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : weekOffset === 1 ? "Next week" : weekRangeFull
+---
+
+<Layout title="Timesheet · Flavio Antelo" description="Timesheet." noindex={true} footer={false} wide={true}>
+  <section class="max-w-5xl mx-auto px-6 pt-16 pb-24">
+    <!-- Header -->
+    <div class="flex items-end justify-between flex-wrap gap-6 mb-8">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Timesheet</h1>
+        <p class="text-sm text-gray-500 mt-1">{rangeLabel}</p>
+      </div>
+      <div class="text-right">
+        <div class="text-3xl font-semibold tabular-nums text-gray-900 leading-none">
+          {fmtHours(weekTotal)}<span class="text-base font-normal text-gray-400 ml-0.5">h</span>
+        </div>
+        <div class:list={["text-sm font-medium text-gray-500 tabular-nums mt-1.5", weekMoney > 0 ? "" : "invisible"]}>
+          {weekMoney > 0 ? fmtMoney(weekMoney) : "—"}
+        </div>
+        <div class="text-xs text-gray-400 mt-1 uppercase tracking-wide">this week</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex items-center justify-between mb-4 gap-4">
+      <div class="flex items-center gap-2">
+        <div
+          class="inline-flex items-center h-9 rounded-lg border border-gray-300 overflow-hidden divide-x divide-gray-300"
+        >
+          <a
+            href={`/timesheet?start=${prevStart}`}
+            class="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors"
+            aria-label="Previous week">‹</a
+          >
+          <a
+            href={`/timesheet?start=${nextStart}`}
+            class="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors"
+            aria-label="Next week">›</a
+          >
+        </div>
+        <button
+          type="button"
+          id="week-trigger"
+          class="inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <svg
+            class="w-4 h-4 text-gray-400 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <rect x="3" y="4.5" width="18" height="16" rx="2"></rect>
+            <path stroke-linecap="round" d="M3 9.5h18M8 3v3M16 3v3"></path>
+          </svg>
+          <span class="font-medium tabular-nums">{weekLabel}</span>
+        </button>
+        <input type="date" id="week-picker" value={startStr} class="sr-only" aria-hidden="true" tabindex="-1" />
+        {
+          weekOffset !== 0 && (
+            <a
+              href={`/timesheet?start=${thisStart}`}
+              class="h-9 px-3 inline-flex items-center rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Today
+            </a>
+          )
+        }
+      </div>
+      <div class="flex items-center gap-4">
+        <button
+          type="button"
+          id="open-manage-locations"
+          class="group inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <svg
+            class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 21s6.5-5.8 6.5-10.5a6.5 6.5 0 10-13 0C5.5 15.2 12 21 12 21z"></path>
+            <circle cx="12" cy="10.5" r="2.2"></circle>
+          </svg>
+          Manage locations
+        </button>
+        <button
+          type="button"
+          id="open-manage-projects"
+          class="group inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <svg
+            class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3 7a2 2 0 012-2h3.6a2 2 0 011.4.6L12.4 7H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path>
+          </svg>
+          Add project
+        </button>
+      </div>
+    </div>
+
+    {
+      allProjects.length === 0 ? (
+        <div class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-20 text-center">
+          <p class="text-sm text-gray-500">No projects yet.</p>
+          <p class="text-xs text-gray-400 mt-1">Click “Add project” above to start tracking.</p>
+        </div>
+      ) : (
+        <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
+              <thead>
+                <tr class="bg-gray-50/70 border-b border-gray-200">
+                  <th class="sticky left-0 z-10 bg-gray-50/70 text-left font-medium text-gray-400 text-xs uppercase tracking-wide py-3 px-5 min-w-[150px]">
+                    Project
+                  </th>
+                  {weekDates.map((d, i) => {
+                    const ds = fmt(d)
+                    const isToday = ds === todayStr
+                    const isWeekend = i >= 5
+                    return (
+                      <th
+                        class:list={["text-center font-medium py-3 px-1 w-[68px]", isToday ? "bg-gray-900/[0.04]" : ""]}
+                      >
+                        <div
+                          class:list={[
+                            "text-xs uppercase tracking-wide",
+                            isWeekend ? "text-gray-300" : "text-gray-400",
+                          ]}
+                        >
+                          {dayNames[i]}
+                        </div>
+                        <div
+                          class:list={[
+                            "text-sm font-semibold tabular-nums mt-0.5",
+                            isToday ? "text-gray-900" : isWeekend ? "text-gray-300" : "text-gray-600",
+                          ]}
+                        >
+                          {d.getDate()}
+                        </div>
+                      </th>
+                    )
+                  })}
+                  <th class="text-center font-medium text-gray-400 text-xs uppercase tracking-wide py-3 px-4 w-16">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {allLocations.length > 0 && (
+                  <tr class="border-b border-gray-100 bg-gray-50/40">
+                    <td class="sticky left-0 z-10 bg-gray-50/40 py-2.5 px-5 align-middle whitespace-nowrap text-xs font-medium uppercase tracking-wide text-gray-400">
+                      Location
+                    </td>
+                    {weekDates.map((d, i) => {
+                      const ds = fmt(d)
+                      const isToday = ds === todayStr
+                      const locId = dayLocMap.get(ds)
+                      const locName = locId ? locNameById.get(locId) : undefined
+                      const label = `${dayNames[i]}, ${monthDay.format(d)}`
+                      return (
+                        <td class:list={["p-0 align-middle", isToday ? "bg-gray-900/[0.03]" : ""]}>
+                          <button
+                            type="button"
+                            class="location-cell group w-full h-full px-1 py-2 flex items-center justify-center cursor-pointer"
+                            title={locName ?? "Set location"}
+                            data-date={ds}
+                            data-label={label}
+                            data-location-id={locId ?? ""}
+                          >
+                            <span
+                              class:list={[
+                                "max-w-[60px] truncate text-xs rounded-md px-1.5 py-1 transition-colors",
+                                locName
+                                  ? "bg-gray-200/70 text-gray-700 group-hover:bg-gray-300/70"
+                                  : "text-gray-300 group-hover:text-gray-500",
+                              ]}
+                            >
+                              {locName ?? "+"}
+                            </span>
+                          </button>
+                        </td>
+                      )
+                    })}
+                    <td />
+                  </tr>
+                )}
+                {allProjects.map((p) => (
+                  <tr class="border-b border-gray-100 last:border-0 group">
+                    <td class="sticky left-0 z-10 bg-white group-hover:bg-gray-50/80 transition-colors py-2.5 px-5 align-middle whitespace-nowrap">
+                      <button
+                        type="button"
+                        class="project-name text-left text-gray-900 font-medium hover:text-gray-500 transition-colors"
+                        data-project-id={p.id}
+                      >
+                        {p.name}
+                      </button>
+                    </td>
+                    {weekDates.map((d, i) => {
+                      const ds = fmt(d)
+                      const h = getHours(p.id, ds)
+                      const isToday = ds === todayStr
+                      const label = `${dayNames[i]}, ${monthDay.format(d)}`
+                      return (
+                        <td class:list={["p-0 align-middle", isToday ? "bg-gray-900/[0.03]" : ""]}>
+                          <button
+                            type="button"
+                            class="entry-cell group w-full h-full px-1 py-2 flex items-center justify-center cursor-pointer select-none"
+                            data-project-id={p.id}
+                            data-project-name={p.name}
+                            data-date={ds}
+                            data-label={label}
+                            data-hours={h ?? ""}
+                          >
+                            <span
+                              class:list={[
+                                "inline-flex items-center justify-center w-12 h-9 rounded-lg border tabular-nums transition-all",
+                                h
+                                  ? "border-gray-900 bg-gray-900 text-white font-medium shadow-sm group-hover:bg-gray-700"
+                                  : "border-transparent text-gray-300 group-hover:border-gray-200 group-hover:bg-gray-50 group-hover:text-gray-500",
+                              ]}
+                            >
+                              {h ? fmtHours(h) : "+"}
+                            </span>
+                          </button>
+                        </td>
+                      )
+                    })}
+                    <td
+                      class:list={[
+                        "text-center px-4 align-middle tabular-nums font-semibold",
+                        rowTotal(p.id) ? "text-gray-700" : "text-gray-300",
+                      ]}
+                    >
+                      {rowMoney(p.id) != null ? (
+                        fmtMoney(rowMoney(p.id)!)
+                      ) : (
+                        <span>
+                          {fmtHours(rowTotal(p.id))}
+                          <span class="text-xs font-normal text-gray-400">h</span>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr class="bg-gray-50/70 border-t border-gray-200">
+                  <td class="sticky left-0 z-10 bg-gray-50/70 py-2.5 px-5 text-gray-400 text-xs uppercase tracking-wide">
+                    Daily
+                  </td>
+                  {weekDates.map((d) => {
+                    const ds = fmt(d)
+                    const isToday = ds === todayStr
+                    const display = hasAnyRate
+                      ? dayMoney(ds) > 0
+                        ? fmtMoney(dayMoney(ds))
+                        : ""
+                      : dayTotal(ds)
+                        ? fmtHours(dayTotal(ds))
+                        : ""
+                    return (
+                      <td
+                        class:list={[
+                          "text-center px-1 py-2.5 text-xs font-medium tabular-nums",
+                          isToday ? "bg-gray-900/[0.04] text-gray-900" : "text-gray-500",
+                        ]}
+                      >
+                        {display}
+                      </td>
+                    )
+                  })}
+                  <td class="text-center px-4 tabular-nums align-middle text-gray-900 font-semibold">
+                    {weekMoney > 0 ? (
+                      fmtMoney(weekMoney)
+                    ) : (
+                      <span>
+                        {fmtHours(weekTotal)}
+                        <span class="text-xs font-normal text-gray-400">h</span>
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )
+    }
+  </section>
+
+  <!-- Generic confirmation modal -->
+  <dialog id="confirm-modal" class="rounded-2xl p-0 w-[90vw] max-w-sm shadow-2xl backdrop:bg-gray-900/40">
+    <div class="relative p-6">
+      <button
+        type="button"
+        class="modal-close absolute top-3 right-3 z-10 w-8 h-8 inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        aria-label="Close"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+          ><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path></svg
+        >
+      </button>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">Are you sure?</h2>
+      <p id="confirm-message" class="text-sm text-gray-500 mb-5"></p>
+      <div class="flex justify-end gap-2">
+        <button
+          type="button"
+          id="confirm-cancel"
+          class="text-sm px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+          >Cancel</button
+        >
+        <button
+          type="button"
+          id="confirm-ok"
+          class="text-sm px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button
+        >
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Entry (hours) modal -->
+  <dialog id="entry-modal" class="rounded-2xl p-0 w-[90vw] max-w-[18rem] shadow-2xl backdrop:bg-gray-900/40">
+    <div class="relative p-5">
+      <button
+        type="button"
+        class="modal-close absolute top-3 right-3 z-10 w-8 h-8 inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        aria-label="Close"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+          ><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path></svg
+        >
+      </button>
+      <h2 id="entry-title" class="text-sm font-semibold text-gray-900"></h2>
+      <p id="entry-sub" class="text-xs text-gray-400 mb-4"></p>
+
+      <form method="POST" class="grid grid-cols-3 gap-2 mb-2">
+        <input type="hidden" name="intent" value="setHours" />
+        <input type="hidden" name="start" value={startStr} />
+        <input type="hidden" name="projectId" class="entry-project" />
+        <input type="hidden" name="date" class="entry-date" />
+        {
+          quick.map((q) => (
+            <button
+              name="hours"
+              value={q}
+              class="py-2.5 text-sm font-medium rounded-xl border border-gray-200 hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-colors tabular-nums"
+            >
+              {q}h
+            </button>
+          ))
+        }
+      </form>
+
+      <form method="POST" class="flex gap-2 mb-4">
+        <input type="hidden" name="intent" value="setHours" />
+        <input type="hidden" name="start" value={startStr} />
+        <input type="hidden" name="projectId" class="entry-project" />
+        <input type="hidden" name="date" class="entry-date" />
+        <input
+          type="number"
+          name="hours"
+          id="entry-custom"
+          step="0.5"
+          min="0"
+          max="24"
+          placeholder="Custom"
+          class="flex-1 w-full text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none tabular-nums"
+        />
+        <button class="text-sm px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+          >Set</button
+        >
+      </form>
+
+      <div class="flex justify-between items-center border-t border-gray-100 pt-3">
+        <form method="POST" id="entry-clear">
+          <input type="hidden" name="intent" value="setHours" />
+          <input type="hidden" name="start" value={startStr} />
+          <input type="hidden" name="projectId" class="entry-project" />
+          <input type="hidden" name="date" class="entry-date" />
+          <input type="hidden" name="hours" value="0" />
+          <button class="text-xs text-gray-400 hover:text-red-500 transition-colors">Clear entry</button>
+        </form>
+        <button type="button" id="entry-cancel" class="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          >Cancel</button
+        >
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Manage projects modal (create / edit name + rate / delete) -->
+  <dialog id="manage-projects-modal" class="rounded-2xl p-0 w-[90vw] max-w-lg shadow-2xl backdrop:bg-gray-900/40">
+    <div class="relative p-6">
+      <button
+        type="button"
+        class="modal-close absolute top-3 right-3 z-10 w-8 h-8 inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        aria-label="Close"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+          ><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path></svg
+        >
+      </button>
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Manage projects</h2>
+      {
+        allProjects.length === 0 ? (
+          <p class="text-sm text-gray-400 mb-4">No projects yet. Add your first one below.</p>
+        ) : (
+          <div class="flex flex-col gap-2 mb-4">
+            <div class="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wide text-gray-400">
+              <span class="flex-1">Name</span>
+              <span class="w-24">Rate</span>
+              <span class="w-9" />
+            </div>
+            {allProjects.map((p) => (
+              <div class="flex items-center gap-2">
+                <form method="POST" class="flex-1 flex items-center gap-2">
+                  <input type="hidden" name="intent" value="renameProject" />
+                  <input type="hidden" name="start" value={startStr} />
+                  <input type="hidden" name="projectId" value={p.id} />
+                  <input
+                    type="text"
+                    name="name"
+                    value={p.name}
+                    required
+                    data-project-id={p.id}
+                    class="manage-project-input flex-1 min-w-0 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none"
+                  />
+                  <div class="relative w-24 flex-shrink-0">
+                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                    <input
+                      type="number"
+                      name="hourlyRate"
+                      value={p.hourlyRate ?? ""}
+                      step="any"
+                      min="0"
+                      placeholder="—"
+                      class="manage-project-input w-full text-sm pl-6 pr-2 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none tabular-nums"
+                    />
+                  </div>
+                </form>
+                <form method="POST" class="delete-project-form" data-count={countMap.get(p.id) ?? 0}>
+                  <input type="hidden" name="intent" value="deleteProject" />
+                  <input type="hidden" name="start" value={startStr} />
+                  <input type="hidden" name="projectId" value={p.id} />
+                  <button
+                    type="submit"
+                    class="w-9 h-9 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors flex-shrink-0"
+                    aria-label={`Delete ${p.name}`}
+                    title={`Delete ${p.name}`}
+                  >
+                    ×
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )
+      }
+      <form method="POST" class="flex items-center gap-2 border-t border-gray-100 pt-4">
+        <input type="hidden" name="intent" value="addProject" />
+        <input type="hidden" name="start" value={startStr} />
+        <input
+          type="text"
+          name="name"
+          placeholder="New project name"
+          required
+          class="flex-1 min-w-0 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none"
+        />
+        <button
+          class="text-sm px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-700 transition-colors flex-shrink-0"
+        >
+          Add
+        </button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Manage locations modal (create / edit / delete) -->
+  <dialog id="manage-locations-modal" class="rounded-2xl p-0 w-[90vw] max-w-md shadow-2xl backdrop:bg-gray-900/40">
+    <div class="relative p-6">
+      <button
+        type="button"
+        class="modal-close absolute top-3 right-3 z-10 w-8 h-8 inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        aria-label="Close"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+          ><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path></svg
+        >
+      </button>
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Manage locations</h2>
+      {
+        allLocations.length === 0 ? (
+          <p class="text-sm text-gray-400 mb-4">No locations yet. Add your first one below.</p>
+        ) : (
+          <div class="flex flex-col gap-2 mb-4">
+            {allLocations.map((l) => (
+              <div class="flex items-center gap-2">
+                <form method="POST" class="flex-1">
+                  <input type="hidden" name="intent" value="renameLocation" />
+                  <input type="hidden" name="start" value={startStr} />
+                  <input type="hidden" name="locationId" value={l.id} />
+                  <input
+                    type="text"
+                    name="name"
+                    value={l.name}
+                    required
+                    class="rename-location-input w-full min-w-0 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none"
+                  />
+                </form>
+                <form method="POST" class="delete-location-form" data-count={locCountMap.get(l.id) ?? 0}>
+                  <input type="hidden" name="intent" value="deleteLocation" />
+                  <input type="hidden" name="start" value={startStr} />
+                  <input type="hidden" name="locationId" value={l.id} />
+                  <button
+                    class="w-9 h-9 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors flex-shrink-0"
+                    aria-label={`Delete ${l.name}`}
+                    title={`Delete ${l.name}`}
+                  >
+                    ×
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )
+      }
+      <form method="POST" class="flex items-center gap-2 border-t border-gray-100 pt-4">
+        <input type="hidden" name="intent" value="addLocation" />
+        <input type="hidden" name="start" value={startStr} />
+        <input
+          type="text"
+          name="name"
+          placeholder="New location name"
+          required
+          class="flex-1 min-w-0 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none"
+        />
+        <button
+          class="text-sm px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-700 transition-colors flex-shrink-0"
+          >Add</button
+        >
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Set day location modal -->
+  <dialog id="location-modal" class="rounded-2xl p-0 w-[90vw] max-w-[18rem] shadow-2xl backdrop:bg-gray-900/40">
+    <div class="relative p-5">
+      <button
+        type="button"
+        class="modal-close absolute top-3 right-3 z-10 w-8 h-8 inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        aria-label="Close"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+          ><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"></path></svg
+        >
+      </button>
+      <h2 class="text-sm font-semibold text-gray-900">Location</h2>
+      <p id="location-sub" class="text-xs text-gray-400 mb-4"></p>
+      {
+        allLocations.length === 0 ? (
+          <p class="text-sm text-gray-400 mb-2">No locations yet. Create one with “Add location”.</p>
+        ) : (
+          <div class="flex flex-col gap-1.5 mb-2">
+            {allLocations.map((l) => (
+              <form method="POST">
+                <input type="hidden" name="intent" value="setDayLocation" />
+                <input type="hidden" name="start" value={startStr} />
+                <input type="hidden" name="locationId" value={l.id} />
+                <input type="hidden" name="date" class="loc-date" />
+                <button class="w-full text-left text-sm px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-colors">
+                  {l.name}
+                </button>
+              </form>
+            ))}
+          </div>
+        )
+      }
+      <div class="flex justify-between items-center border-t border-gray-100 mt-3 pt-3">
+        <form method="POST" id="location-clear">
+          <input type="hidden" name="intent" value="setDayLocation" />
+          <input type="hidden" name="start" value={startStr} />
+          <input type="hidden" name="locationId" value="0" />
+          <input type="hidden" name="date" class="loc-date" />
+          <button class="text-xs text-gray-400 hover:text-red-500 transition-colors">Clear</button>
+        </form>
+        <button type="button" id="location-cancel" class="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          >Cancel</button
+        >
+      </div>
+    </div>
+  </dialog>
+
+  <style>
+    dialog[open] {
+      animation: dialog-pop 0.16s ease-out;
+    }
+    dialog::backdrop {
+      animation: dialog-fade 0.16s ease-out;
+    }
+    @keyframes dialog-pop {
+      from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.97);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    @keyframes dialog-fade {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
+
+  <script>
+    function wire(openTrigger: () => void, modal: HTMLDialogElement | null, cancel: HTMLElement | null) {
+      cancel?.addEventListener("click", () => modal?.close())
+      modal?.addEventListener("click", (e) => {
+        if (e.target === modal) modal.close()
+      })
+    }
+
+    // Generic confirmation modal — intercept delete forms and confirm before submitting
+    const confirmModal = document.getElementById("confirm-modal") as HTMLDialogElement | null
+    const confirmMessage = document.getElementById("confirm-message")
+    let pendingForm: HTMLFormElement | null = null
+    function askConfirm(message: string, form: HTMLFormElement) {
+      pendingForm = form
+      if (confirmMessage) confirmMessage.textContent = message
+      confirmModal?.showModal()
+    }
+    document.getElementById("confirm-ok")?.addEventListener("click", () => {
+      const f = pendingForm
+      pendingForm = null
+      confirmModal?.close()
+      f?.submit()
+    })
+    wire(() => {}, confirmModal, document.getElementById("confirm-cancel"))
+
+    // Entry (hours) modal
+    const entryModal = document.getElementById("entry-modal") as HTMLDialogElement | null
+    const entryTitle = document.getElementById("entry-title")
+    const entrySub = document.getElementById("entry-sub")
+    const entryCustom = document.getElementById("entry-custom") as HTMLInputElement | null
+    const entryClear = document.getElementById("entry-clear") as HTMLElement | null
+    document.querySelectorAll<HTMLButtonElement>(".entry-cell").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const { projectId = "", date = "", hours = "", projectName = "", label = "" } = cell.dataset
+        entryModal?.querySelectorAll<HTMLInputElement>(".entry-project").forEach((i) => (i.value = projectId))
+        entryModal?.querySelectorAll<HTMLInputElement>(".entry-date").forEach((i) => (i.value = date))
+        if (entryTitle) entryTitle.textContent = projectName
+        if (entrySub) entrySub.textContent = label
+        if (entryCustom) entryCustom.value = hours
+        if (entryClear) entryClear.style.display = hours ? "" : "none"
+        entryModal?.showModal()
+      })
+    })
+    wire(() => {}, entryModal, document.getElementById("entry-cancel"))
+
+    // Manage projects modal — open from the button or by clicking a project name
+    const manageProjectsModal = document.getElementById("manage-projects-modal") as HTMLDialogElement | null
+    document.getElementById("open-manage-projects")?.addEventListener("click", () => manageProjectsModal?.showModal())
+    manageProjectsModal?.addEventListener("click", (e) => {
+      if (e.target === manageProjectsModal) manageProjectsModal.close()
+    })
+    document.querySelectorAll<HTMLButtonElement>(".project-name").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        manageProjectsModal?.showModal()
+        const input = manageProjectsModal?.querySelector<HTMLInputElement>(
+          `.manage-project-input[data-project-id="${btn.dataset.projectId}"]`,
+        )
+        input?.focus()
+        input?.select()
+      })
+    })
+    // Auto-save project name/rate on blur (Enter also submits the row form)
+    document.querySelectorAll<HTMLInputElement>(".manage-project-input").forEach((input) => {
+      input.addEventListener("blur", () => {
+        if (input.value !== input.defaultValue) input.form?.requestSubmit()
+      })
+    })
+
+    // Manage locations modal
+    const manageLocationsModal = document.getElementById("manage-locations-modal") as HTMLDialogElement | null
+    document.getElementById("open-manage-locations")?.addEventListener("click", () => manageLocationsModal?.showModal())
+    manageLocationsModal?.addEventListener("click", (e) => {
+      if (e.target === manageLocationsModal) manageLocationsModal.close()
+    })
+    document.querySelectorAll<HTMLInputElement>(".rename-location-input").forEach((input) => {
+      input.addEventListener("blur", () => {
+        const v = input.value.trim()
+        if (v && v !== input.defaultValue) input.form?.submit()
+      })
+    })
+
+    // Every modal's top-right × closes its dialog
+    document.querySelectorAll<HTMLButtonElement>(".modal-close").forEach((btn) => {
+      btn.addEventListener("click", () => btn.closest("dialog")?.close())
+    })
+
+    // Set day location modal
+    const locationModal = document.getElementById("location-modal") as HTMLDialogElement | null
+    const locationSub = document.getElementById("location-sub")
+    const locationClear = document.getElementById("location-clear") as HTMLElement | null
+    document.querySelectorAll<HTMLButtonElement>(".location-cell").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const { date = "", label = "", locationId = "" } = cell.dataset
+        locationModal?.querySelectorAll<HTMLInputElement>(".loc-date").forEach((i) => (i.value = date))
+        if (locationSub) locationSub.textContent = label
+        if (locationClear) locationClear.style.display = locationId ? "" : "none"
+        locationModal?.showModal()
+      })
+    })
+    wire(() => {}, locationModal, document.getElementById("location-cancel"))
+
+    // Delete confirmations use the custom modal instead of the native confirm()
+    document.querySelectorAll<HTMLFormElement>(".delete-project-form").forEach((f) => {
+      f.addEventListener("submit", (e) => {
+        e.preventDefault()
+        const n = Number(f.dataset.count || "0")
+        const msg =
+          n === 0
+            ? "Delete this project?"
+            : n === 1
+              ? "Delete this project and its 1 entry?"
+              : `Delete this project and all its ${n} entries?`
+        askConfirm(msg, f)
+      })
+    })
+    document.querySelectorAll<HTMLFormElement>(".delete-location-form").forEach((f) => {
+      f.addEventListener("submit", (e) => {
+        e.preventDefault()
+        const n = Number(f.dataset.count || "0")
+        const msg =
+          n === 0
+            ? "Delete this location?"
+            : n === 1
+              ? "Delete this location? It is set on 1 day."
+              : `Delete this location? It is set on ${n} days.`
+        askConfirm(msg, f)
+      })
+    })
+
+    // Week picker (calendar trigger jumps to the Monday of the chosen date)
+    const weekTrigger = document.getElementById("week-trigger")
+    const weekPicker = document.getElementById("week-picker") as HTMLInputElement | null
+    weekTrigger?.addEventListener("click", () => {
+      if (weekPicker?.showPicker) weekPicker.showPicker()
+      else weekPicker?.focus()
+    })
+    weekPicker?.addEventListener("change", () => {
+      if (!weekPicker.value) return
+      const d = new Date(weekPicker.value + "T00:00:00")
+      const dow = (d.getDay() + 6) % 7
+      d.setDate(d.getDate() - dow)
+      const p = (n: number) => String(n).padStart(2, "0")
+      window.location.href = `/timesheet?start=${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+    })
+  </script>
+</Layout>
