@@ -1,5 +1,5 @@
 ---
-title: "Pagination with React Query"
+title: "Load-more pagination with React Query and Rails"
 description: "Implementing 'load more' pagination with React Query's useInfiniteQuery against a Ruby on Rails back-end."
 publishedAt: 2023-11-01
 ---
@@ -87,8 +87,6 @@ const notifications = data?.pages.flat()
 return notifications.map((notification) => ...)
 ```
 
-## Conclusion
+The full example is on [this GitHub commit](https://github.com/cherrypush/cherrypush.com/commit/4bc95f29e5a3d3565a74861b0dbbb63f33861007).
 
-As usual, React Query is such a pleasure to use. The implementation of pagination is straightforward, and you can find the example above directly on [this GitHub commit](https://github.com/cherrypush/cherrypush.com/commit/4bc95f29e5a3d3565a74861b0dbbb63f33861007).
-
-Also, note that we could opt to use the same approach of "infinite scrolling". For that, we'd need to watch for a DOM element that is placed at the bottom of the list and use it to trigger the fetchNextPage function.
+The only surprise is the data shape: `pages.flat()` instead of the flat array you'd get from `useQuery`. Once you know that, the rest follows.
