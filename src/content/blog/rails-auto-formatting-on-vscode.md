@@ -4,8 +4,6 @@ description: "Use Syntax Tree to auto-format your Ruby on Rails files on Visual 
 publishedAt: 2023-07-05
 ---
 
-Use Syntax Tree to auto-format Ruby on Rails files on Visual Studio Code.
-
 Auto code formatters like Prettier bring several benefits to the table.
 
 - They save you valuable time by automatically formatting your code, eliminating the need for manual formatting.
@@ -32,7 +30,7 @@ bundle install
 
 We can now setup a `.streerc` file at the root of the project:
 
-```
+```text
 --print-width=120
 --plugins=plugin/single_quotes,plugin/trailing_comma
 --ignore-files='**/node_modules/**'
@@ -67,3 +65,5 @@ This is what I do, so my `settings.json` file looks like the following:
   "editor.defaultFormatter": "ruby-syntax-tree.vscode-syntax-tree"
 },
 ```
+
+Once everyone's on the same formatter, style stops showing up in review. The diff is about what changed, not how it looks.
