@@ -1,18 +1,18 @@
 ---
-title: "Ruby + ActiveSupport = 🧘🏻‍♀️"
-description: "Use ActiveSupport methods in plain Ruby scripts and code like a champ, even outside of Rails."
+title: "Using ActiveSupport in plain Ruby scripts"
+description: "How to use ActiveSupport's convenience methods in plain Ruby, without pulling in all of Rails."
 publishedAt: 2023-06-26
 ---
 
-## Ruby and Rails are not the same thing 🫢
+## Ruby and Rails are not the same thing
 
 People often get confused between Rails and Ruby, and it's understandable why. Rails is a web application framework built using the Ruby language, so they go hand in hand. Ruby is the programming language, known for its simplicity and readability, while Rails is a framework that makes web development easier mainly by encouraging [convention over configuration](https://rubyonrails.org/doctrine#convention-over-configuration).
 
-One reason for the confusion is that Rails developers often use ActiveSupport, a Ruby library that comes bundled with Rails. It provides helpful methods for things like date manipulation and string inflections. These methods are super convenient when working on Rails projects, but they're not available by default in pure Ruby. So, sometimes developers try to use these Rails-specific methods in regular Ruby scripts and get stuck.
+One reason for the confusion is that Rails developers often use ActiveSupport, a Ruby library that comes bundled with Rails. It provides helpful methods for things like date manipulation and string inflections. These methods are useful when working on Rails projects, but they're not available by default in pure Ruby. So sometimes developers try to use these Rails-specific methods in regular Ruby scripts and get stuck.
 
-What some don't realize, is that you can have your cake and eat it too 🍰
+What some don't realize is that you can use them both ways.
 
-## Long live ActiveSupport 🙏
+## Using ActiveSupport
 
 While ActiveSupport methods are primarily designed to enhance Ruby within the Rails framework, there are cases where you might find them useful even when writing pure Ruby scripts. ActiveSupport provides a collection of handy methods that can simplify your code and make it more expressive.
 
@@ -85,3 +85,5 @@ By requiring `active_support/all`, you gain access to the full range of ActiveSu
 To learn more about the Active Support core extensions and the methods available for each Ruby class, you can refer to [the official Rails Guides documentation on Active Support core extensions](https://guides.rubyonrails.org/active_support_core_extensions.html).
 
 These guides provide detailed information about each extension category and the corresponding methods, helping you understand and leverage the power of ActiveSupport in your Ruby scripts.
+
+You're not locked into loading all of Rails to use its most useful parts. `require 'active_support/all'` is a one-liner that pays for itself.
