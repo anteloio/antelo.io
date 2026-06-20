@@ -1,12 +1,10 @@
 ---
 title: "SPACE Metrics for Engineering Teams"
-description: "My humble notes about the SPACE productivity framework for tech teams, broken down letter by letter."
+description: "The SPACE productivity framework for engineering teams, broken down across five dimensions."
 publishedAt: 2023-10-09
 ---
 
-My humble notes about the SPACE productivity framework for tech teams.
-
-There are multiple frameworks for tracking and evaluating an engineering team's work. In this article, I'm dumping the personal notes I've taken while reading about the SPACE framework.
+There are multiple frameworks for tracking and evaluating an engineering team's work. SPACE is one of the better ones.
 
 I'll break it down letter by letter:
 
@@ -107,4 +105,4 @@ These are your ultimate metrics. Ask them!
 
 Everything else can be used as a thermometer to start new investigations. But, eventually, you will need to talk to every and each one of your team members. Otherwise, you are sure to neglect and dangerously ignore crucial information to conduct a relevant leadership.
 
-**What actionable metric will you start tracking today?**
+Use these as diagnostics, not scorecards. A number that looks bad is the start of a conversation, not the conclusion.
