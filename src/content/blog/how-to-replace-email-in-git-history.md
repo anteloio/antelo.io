@@ -72,3 +72,5 @@ Notice that filter-repo might have removed your remote reference in the process.
 ```bash
 git remote add origin git@github.com:username/reponame.git
 ```
+
+The remote removal is the one gotcha. Everything else is exactly what it looks like.
