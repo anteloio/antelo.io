@@ -4,8 +4,6 @@ description: "Notes to my future self on building a photo gallery in Rails with 
 publishedAt: 2025-04-08
 ---
 
-Here are some notes I've taken to my future self while implementing a gallery of photos in Rails and using Cloudinary. Note that I also prepare the same Cloudinary bucket to be used by both development and production, but in a way that we can stay in their free tier (a single bucket). Hope this is useful to others too.
-
 ## Scaffolding
 
 ```bash
@@ -128,3 +126,5 @@ end
           method: :delete, data: { confirm: 'Are you sure you want to delete this photo?' }, \
           class: 'btn btn-light btn-block'
 ```
+
+The `<%= Rails.env %>` folder in storage.yml does all the work. One account, two environments, no extra cost.
