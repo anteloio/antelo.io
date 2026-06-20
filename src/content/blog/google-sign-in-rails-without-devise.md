@@ -4,8 +4,6 @@ description: "Implement Google login on your Ruby on Rails app with pure Omniaut
 publishedAt: 2023-08-31
 ---
 
-Implement Google login on your Ruby on Rails app with pure Omniauth.
-
 In another article, I explained how to implement Google OAuth by using Devise. Devise has its advantages if you're planning to implement more complex login flows or options, such as login via email, recovering passwords, expiring sessions, etc.
 
 However, if you want to stick with the bare minimum, relying purely on the Omniauth gem is the approach described here.
@@ -190,6 +188,4 @@ Add a couple of links to your views so that users can log in and log out:
 <% end %>
 ```
 
-## Demo
-
-I used this approach to implement login for my technical debt tracker app at cherrypush.com.
+Add Devise when you need email/password login, password reset, or multiple providers. For Google-only auth, this is everything.
