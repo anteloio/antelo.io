@@ -1,14 +1,12 @@
 ---
-title: "Deploying Rails with Kamal"
-description: "Notes to my future self on deploying a Rails app to a Hetzner server with Kamal, from creating the server to running the first deploy."
+title: "Zero-downtime Rails deploys on a single VM: Hetzner and Kamal"
+description: "How to set up a Hetzner server and ship your first Rails deploy with Kamal."
 publishedAt: 2025-04-21
 ---
 
-Writing this mostly for myself, but I hope it helps you too.
-
 ## Create your server
 
-I've been using Hetzner lately. It's great quality, and super cheap.
+I've been using Hetzner lately. It's great quality and cheap.
 
 In the web UI, I usually create a server with:
 
@@ -80,3 +78,5 @@ When you're ready to deploy:
 ```bash
 kamal deploy
 ```
+
+After DNS propagates, that's it. A single server, deployed with two commands. Most Rails apps don't need more than this.
