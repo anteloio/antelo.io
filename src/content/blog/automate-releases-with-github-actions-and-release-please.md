@@ -106,7 +106,7 @@ Conventional commits are a way to indicate to release-please what kind of change
 
 Here's what a conventional commit message looks like:
 
-```
+```text
 <type>(<scope>): <description>
 ```
 
@@ -141,13 +141,15 @@ Release-please follows the Conventional Commits specification to determine wheth
 
 Here's how it maps:
 
-**🔧 Patch version (x.y.Z):** fix, perf
+**Patch version (x.y.Z):** fix, perf
 
-**✨ Minor version (x.Y.z):** feat, refactor, style, test, chore
+**Minor version (x.Y.z):** feat, refactor, style, test, chore
 
-**💥 Major version (X.y.z):**
+**Major version (X.y.z):**
 
 - Commit includes BREAKING CHANGE in the body
 - Commit includes a bang (!) in the type or scope, e.g. feat!: or feat(api)!:
 
 Release-please reads your commits, figures out the right bump, and updates your changelog automatically.
+
+The setup is ten minutes. The discipline is writing conventional commits consistently. If your team does that, versioning runs itself. If it doesn't, you'll be curating changelogs by hand anyway.
