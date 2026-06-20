@@ -6,8 +6,14 @@ const blog = defineCollection({
   schema: z.object({
     title: z.string(),
     description: z.string(),
-    publishedAt: z.coerce.date(),
+    publishedAt: z.coerce.date().optional(),
+    draft: z.boolean().optional(),
   }),
 })
 
-export const collections = { blog }
+const tweets = defineCollection({
+  loader: glob({ pattern: "**/*.md", base: "./src/content/tweets" }),
+  schema: z.object({}),
+})
+
+export const collections = { blog, tweets }
