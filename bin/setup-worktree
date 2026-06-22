@@ -1,39 +1,22 @@
 #!/usr/bin/env bash
 #
-# Bootstrap a freshly created git worktree / Conductor workspace.
-#
-# Runs automatically via .conductor/settings.toml when Conductor creates a
-# workspace, and is safe to run by hand from any worktree at any time.
-#
-#   1. Links this worktree's gitignored .envrc to the canonical one in the repo
-#      root, so the TURSO + Google OAuth secrets live in one place instead of
-#      being copied (and going stale) per worktree.
-#   2. Installs node dependencies, since each worktree has its own node_modules.
+# Bootstrap a freshly created Conductor worktree:
+#   1. Link this worktree's gitignored .envrc to the canonical one in the repo
+#      root, so the TURSO + Google OAuth secrets live in one place per machine.
+#   2. Install node dependencies (each worktree has its own node_modules).
 #
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 
-# Conductor sets CONDUCTOR_ROOT_PATH to the main checkout. Outside Conductor,
-# fall back to the first entry of `git worktree list` (git always lists the
-# main worktree first).
+# Conductor sets CONDUCTOR_ROOT_PATH to the main checkout; fall back to the
+# first entry of `git worktree list` (git always lists the main worktree first).
 main_root="${CONDUCTOR_ROOT_PATH:-$(git worktree list --porcelain | sed -n '1s/^worktree //p')}"
 
-# --- 1. Share the .envrc secrets ------------------------------------------
-if [ "$repo_root" = "$main_root" ]; then
-  echo "setup-worktree: main worktree, leaving its real .envrc in place."
-elif [ -e "$main_root/.envrc" ]; then
-  ln -sfn "$main_root/.envrc" "$repo_root/.envrc"
-  echo "setup-worktree: linked .envrc -> $main_root/.envrc"
-  command -v direnv >/dev/null 2>&1 && direnv allow "$repo_root" >/dev/null 2>&1 || true
-else
-  echo "setup-worktree: no .envrc found in $main_root; skipping link." >&2
-fi
+# 1. Link the shared secrets file (the repo root always has one).
+ln -sfn "$main_root/.envrc" "$repo_root/.envrc"
+direnv allow "$repo_root"
+echo "setup-worktree: linked .envrc -> $main_root/.envrc"
 
-# --- 2. Install dependencies ----------------------------------------------
-if command -v pnpm >/dev/null 2>&1; then
-  echo "setup-worktree: installing dependencies with pnpm..."
-  (cd "$repo_root" && pnpm install)
-else
-  echo "setup-worktree: pnpm not found; skipping dependency install." >&2
-fi
+# 2. Install dependencies.
+(cd "$repo_root" && pnpm install)
