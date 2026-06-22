@@ -44,7 +44,7 @@ At the end, include a **Sources** section with links to relevant HN threads, blo
 
 ## Step 4 — Create the draft
 
-Use `src/templates/draft.md` as the template. Write to `src/content/blog/<slug>.md` and print the file.
+Use `.mdless/agents/example-good-draft.md` as a reference for format and quality. Write to `src/content/blog/<slug>.md` and print the file.
 
 ## Rules
 
