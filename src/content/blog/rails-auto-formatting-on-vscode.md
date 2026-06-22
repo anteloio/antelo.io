@@ -1,5 +1,5 @@
 ---
-title: "Rails: Auto-Formatting on VSCode"
+title: "Rails: auto-formatting on VSCode"
 description: "Use Syntax Tree to auto-format your Ruby on Rails files on Visual Studio Code, and stop arguing about formatting in code review."
 publishedAt: 2023-07-05
 ---
