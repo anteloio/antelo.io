@@ -1,5 +1,5 @@
 ---
-title: "Redirect Naked Domain to www with Kamal"
+title: "Redirect naked domain to www with Kamal"
 description: "A quick recipe for redirecting your naked domain to the www subdomain when deploying Rails with Kamal."
 publishedAt: 2025-05-18
 ---
