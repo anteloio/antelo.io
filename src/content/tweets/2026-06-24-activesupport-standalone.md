@@ -1,4 +1,4 @@
-Quick reminder: you don't need whole Rails for its syntactic sugar.
+You don't need all of Rails for its syntactic sugar.
 
 ```ruby
 require "active_support/all"
