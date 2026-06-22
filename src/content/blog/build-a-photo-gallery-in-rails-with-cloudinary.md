@@ -1,5 +1,5 @@
 ---
-title: "Build a Photo Gallery in Rails with Cloudinary (Free Tier)"
+title: "Build a photo gallery in Rails with Cloudinary (free tier)"
 description: "Notes to my future self on building a photo gallery in Rails with Cloudinary, using a single bucket for dev and prod to stay on the free tier."
 publishedAt: 2025-04-08
 ---
