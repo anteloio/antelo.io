@@ -1,5 +1,5 @@
 ---
-title: "SPACE Metrics for Engineering Teams"
+title: "SPACE metrics for engineering teams"
 description: "The SPACE productivity framework for engineering teams, broken down across five dimensions."
 publishedAt: 2023-10-09
 ---
@@ -14,7 +14,7 @@ I'll break it down letter by letter:
 - C for Communication and Collaboration
 - E for Efficiency (and flow)
 
-## Satisfaction and Well-Being
+## Satisfaction and well-being
 
 **Satisfaction** is how fulfilled developers feel about the main aspects of their work, in terms of Work, Team, Tools, and Culture.
 
@@ -69,7 +69,7 @@ _** Interesting to understand specific behavior and share best practices._
 
 Attention! For an ever-lasting metric, do not use absolute values. Instead, calculate the ratio of activity per developer per unit of time.
 
-## Communication and Collaboration
+## Communication and collaboration
 
 This metric captures how people work together:
 
