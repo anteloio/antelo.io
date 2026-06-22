@@ -1,5 +1,5 @@
 ---
-title: "Automate Releases with GitHub Actions and release-please"
+title: "Automate releases with GitHub Actions and release-please"
 description: "Set up automated versioning and changelogs with release-please and GitHub Actions, driven entirely by your conventional commits."
 publishedAt: 2025-03-30
 ---
@@ -100,7 +100,7 @@ jobs:
           target-branch: <current-branch>
 ```
 
-## Conventional Commits
+## Conventional commits
 
 Conventional commits are a way to indicate to release-please what kind of changes you made. It'll then rely on the commit message to automate the bump of the version of your components, and to generate their changelogs.
 
