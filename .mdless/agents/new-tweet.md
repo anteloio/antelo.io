@@ -32,3 +32,4 @@ Save to `src/content/tweets/YYYY-MM-DD.md`, using the next available weekday as 
 - One tweet per run.
 - Do not post. Files are the queue.
 - Do not commit. Stay on `main`.
+- If a tweet mentions a tool, library, company, or person, include their Twitter/X handle so they get notified. Only add handles you are confident about — do not guess.
