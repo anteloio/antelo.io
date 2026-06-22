@@ -1,5 +1,5 @@
 ---
-title: "How to Replace Email in Git History"
+title: "How to replace email in git history"
 description: "Change your Git commit history email using git-filter-repo. A step-by-step guide with setup, usage, and common issues to watch out for."
 publishedAt: 2025-04-01
 ---
