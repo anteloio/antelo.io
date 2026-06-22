@@ -1,4 +1,4 @@
-# Editor Agent
+# Audit All Content
 
 Read all published posts, drafts, and the tweet queue. Identify improvements, apply them.
 

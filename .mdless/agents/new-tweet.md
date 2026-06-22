@@ -1,4 +1,4 @@
-# Tweet Writer Agent
+# New Tweet
 
 One invocation = one tweet written to `src/content/tweets/`.
 
