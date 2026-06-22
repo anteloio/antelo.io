@@ -36,7 +36,7 @@ A good idea: relevant to Flavio's audience (small to medium companies hiring fre
 Be exhaustive. Each point must describe the **actual content**: what argument is made, what example is shown, what the reader learns. Not headings.
 
 Bad: "How to handle background jobs in Rails"
-Good: "Why a Sidekiq job can charge a card twice, return no error, and you only find out from a customer complaint. The idempotency check that prevents it."
+Good: "Why a background job can charge a card twice, return no error, and you only find out from a customer complaint. The idempotency check that prevents it."
 
 Cover everything the post could say. The editor will decide what to keep. Detailed enough that a writer could start immediately.
 
