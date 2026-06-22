@@ -7,4 +7,7 @@ export default defineConfig({
   integrations: [tailwind()],
   site: "https://antelo.io",
   adapter: vercel(),
+  security: {
+    checkOrigin: false,
+  },
 })
