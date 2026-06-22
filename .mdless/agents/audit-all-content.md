@@ -64,7 +64,7 @@ Length is a dial, not a rule. Tighten when it's padded. Expand when it's cryptic
 
 **Posts:** edit only what genuinely improves the post. For titles, update both `title:` and `description:` if stale. For hooks, add or replace the final paragraph. For consistency, fix directly. Do not change the substance of a post.
 
-**Tweets:** edit freely. Rewrite for context, frame, clarity, and length. Merge or split lines. Replace platitudes with concrete observations.
+**Tweets:** edit freely. Rewrite for context, frame, clarity, and length. Merge or split lines. Replace platitudes with concrete observations. If a tweet mentions a tool, library, company, or person without their Twitter/X handle, add it — only when confident, do not guess.
 
 Delete the whole file if a tweet isn't worth keeping: platitude, wrong frame you can't fix, duplicate of another queued tweet, or weak filler that adds nothing to the feed. Removing a bad tweet is better than polishing one that shouldn't ship.
 
