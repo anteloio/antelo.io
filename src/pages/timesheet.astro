@@ -5,6 +5,12 @@ import Layout from "../layouts/Layout.astro"
 import { db } from "../db"
 import { projects, timeEntries, locations, dayLocations } from "../db/schema"
 import { and, eq, gte, lte, sql } from "drizzle-orm"
+import { auth } from "../lib/auth"
+
+// --- auth gate: every read and write below is scoped to this user ---
+const session = await auth.api.getSession({ headers: Astro.request.headers })
+if (!session) return Astro.redirect("/login")
+const userId = session.user.id
 
 // --- date helpers (local, Monday-based week) ---
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -29,7 +35,7 @@ if (Astro.request.method === "POST") {
 
   if (intent === "addProject") {
     const name = String(form.get("name") || "").trim()
-    if (name) await db.insert(projects).values({ name })
+    if (name) await db.insert(projects).values({ name, userId })
   } else if (intent === "setHours") {
     const projectId = Number(form.get("projectId"))
     const date = String(form.get("date") || "")
@@ -38,13 +44,15 @@ if (Astro.request.method === "POST") {
       if (hours > 0) {
         await db
           .insert(timeEntries)
-          .values({ projectId, date, hours })
+          .values({ projectId, date, hours, userId })
           .onConflictDoUpdate({
             target: [timeEntries.projectId, timeEntries.date],
             set: { hours },
           })
       } else {
-        await db.delete(timeEntries).where(and(eq(timeEntries.projectId, projectId), eq(timeEntries.date, date)))
+        await db
+          .delete(timeEntries)
+          .where(and(eq(timeEntries.projectId, projectId), eq(timeEntries.date, date), eq(timeEntries.userId, userId)))
       }
     }
   } else if (intent === "renameProject") {
@@ -53,40 +61,49 @@ if (Astro.request.method === "POST") {
     const rateRaw = String(form.get("hourlyRate") || "").trim()
     const hourlyRate = rateRaw === "" ? null : Number(rateRaw)
     if (projectId && name) {
-      await db.update(projects).set({ name, hourlyRate }).where(eq(projects.id, projectId))
+      await db
+        .update(projects)
+        .set({ name, hourlyRate })
+        .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
     }
   } else if (intent === "deleteProject") {
     const projectId = Number(form.get("projectId"))
     if (projectId) {
-      await db.delete(timeEntries).where(eq(timeEntries.projectId, projectId))
-      await db.delete(projects).where(eq(projects.id, projectId))
+      await db.delete(timeEntries).where(and(eq(timeEntries.projectId, projectId), eq(timeEntries.userId, userId)))
+      await db.delete(projects).where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
     }
   } else if (intent === "addLocation") {
     const name = String(form.get("name") || "").trim()
-    if (name) await db.insert(locations).values({ name })
+    if (name) await db.insert(locations).values({ name, userId })
   } else if (intent === "renameLocation") {
     const locationId = Number(form.get("locationId"))
     const name = String(form.get("name") || "").trim()
     if (locationId && name) {
-      await db.update(locations).set({ name }).where(eq(locations.id, locationId))
+      await db
+        .update(locations)
+        .set({ name })
+        .where(and(eq(locations.id, locationId), eq(locations.userId, userId)))
     }
   } else if (intent === "deleteLocation") {
     const locationId = Number(form.get("locationId"))
     if (locationId) {
-      await db.delete(dayLocations).where(eq(dayLocations.locationId, locationId))
-      await db.delete(locations).where(eq(locations.id, locationId))
+      await db.delete(dayLocations).where(and(eq(dayLocations.locationId, locationId), eq(dayLocations.userId, userId)))
+      await db.delete(locations).where(and(eq(locations.id, locationId), eq(locations.userId, userId)))
     }
   } else if (intent === "setDayLocation") {
     const date = String(form.get("date") || "")
     const locationId = Number(form.get("locationId"))
     if (date) {
       if (locationId > 0) {
-        await db.insert(dayLocations).values({ date, locationId }).onConflictDoUpdate({
-          target: dayLocations.date,
-          set: { locationId },
-        })
+        await db
+          .insert(dayLocations)
+          .values({ date, locationId, userId })
+          .onConflictDoUpdate({
+            target: [dayLocations.userId, dayLocations.date],
+            set: { locationId },
+          })
       } else {
-        await db.delete(dayLocations).where(eq(dayLocations.date, date))
+        await db.delete(dayLocations).where(and(eq(dayLocations.date, date), eq(dayLocations.userId, userId)))
       }
     }
   }
@@ -107,11 +124,11 @@ const prevStart = fmt(addDays(weekStart, -7))
 const nextStart = fmt(addDays(weekStart, 7))
 const thisStart = fmt(mondayOf(new Date()))
 
-const allProjects = await db.select().from(projects).orderBy(projects.name)
+const allProjects = await db.select().from(projects).where(eq(projects.userId, userId)).orderBy(projects.name)
 const entries = await db
   .select()
   .from(timeEntries)
-  .where(and(gte(timeEntries.date, startStr), lte(timeEntries.date, endStr)))
+  .where(and(eq(timeEntries.userId, userId), gte(timeEntries.date, startStr), lte(timeEntries.date, endStr)))
 
 // map: `${projectId}:${date}` -> hours
 const hoursMap = new Map<string, number>()
@@ -121,17 +138,18 @@ for (const e of entries) hoursMap.set(`${e.projectId}:${e.date}`, e.hours)
 const counts = await db
   .select({ projectId: timeEntries.projectId, n: sql<number>`count(*)` })
   .from(timeEntries)
+  .where(eq(timeEntries.userId, userId))
   .groupBy(timeEntries.projectId)
 const countMap = new Map<number, number>()
 for (const c of counts) countMap.set(c.projectId, Number(c.n))
 
 // locations + the location assigned to each day of this week
-const allLocations = await db.select().from(locations).orderBy(locations.name)
+const allLocations = await db.select().from(locations).where(eq(locations.userId, userId)).orderBy(locations.name)
 const locNameById = new Map(allLocations.map((l) => [l.id, l.name]))
 const dayLocs = await db
   .select()
   .from(dayLocations)
-  .where(and(gte(dayLocations.date, startStr), lte(dayLocations.date, endStr)))
+  .where(and(eq(dayLocations.userId, userId), gte(dayLocations.date, startStr), lte(dayLocations.date, endStr)))
 const dayLocMap = new Map<string, number>()
 for (const dl of dayLocs) dayLocMap.set(dl.date, dl.locationId)
 
@@ -139,6 +157,7 @@ for (const dl of dayLocs) dayLocMap.set(dl.date, dl.locationId)
 const locCounts = await db
   .select({ locationId: dayLocations.locationId, n: sql<number>`count(*)` })
   .from(dayLocations)
+  .where(eq(dayLocations.userId, userId))
   .groupBy(dayLocations.locationId)
 const locCountMap = new Map<number, number>()
 for (const c of locCounts) locCountMap.set(c.locationId, Number(c.n))
@@ -189,6 +208,15 @@ const weekLabel =
 
 <Layout title="Timesheet · Flavio Antelo" description="Timesheet." noindex={true} footer={false} wide={true}>
   <section class="max-w-5xl mx-auto px-6 pt-16 pb-24" style="font-feature-settings: 'cv02' 1, 'tnum' 1;">
+    <!-- Account -->
+    <div class="flex items-center justify-end gap-3 mb-6 text-xs text-gray-400">
+      <span class="truncate max-w-[16rem]">{session.user.email}</span>
+      <span aria-hidden="true">·</span>
+      <button id="signout" type="button" class="hover:text-gray-900 transition-colors underline-offset-2 hover:underline">
+        Sign out
+      </button>
+    </div>
+
     <!-- Header -->
     <div class="flex items-end justify-between flex-wrap gap-6 mb-8">
       <div>
@@ -252,46 +280,66 @@ const weekLabel =
           )
         }
       </div>
-      <div class="flex items-center gap-4">
+      <div class="relative" id="manage-menu">
         <button
           type="button"
-          id="open-manage-locations"
-          class="group inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          id="manage-menu-trigger"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-label="Manage"
+          class="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors"
         >
-          <svg
-            class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="1.8"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 21s6.5-5.8 6.5-10.5a6.5 6.5 0 10-13 0C5.5 15.2 12 21 12 21z"></path>
-            <circle cx="12" cy="10.5" r="2.2"></circle>
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="1.6"></circle>
+            <circle cx="12" cy="12" r="1.6"></circle>
+            <circle cx="12" cy="19" r="1.6"></circle>
           </svg>
-          Manage locations
         </button>
-        <button
-          type="button"
-          id="open-manage-projects"
-          class="group inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        <div
+          id="manage-menu-panel"
+          hidden
+          class="absolute right-0 top-full mt-1.5 z-20 w-48 rounded-lg border border-gray-200 bg-white shadow-lg py-1"
         >
-          <svg
-            class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="1.8"
+          <button
+            type="button"
+            id="open-manage-projects"
+            class="group flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M3 7a2 2 0 012-2h3.6a2 2 0 011.4.6L12.4 7H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path>
-          </svg>
-          Add project
-        </button>
+            <svg
+              class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="1.8"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M3 7a2 2 0 012-2h3.6a2 2 0 011.4.6L12.4 7H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path>
+            </svg>
+            Add project
+          </button>
+          <button
+            type="button"
+            id="open-manage-locations"
+            class="group flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <svg
+              class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="1.8"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 21s6.5-5.8 6.5-10.5a6.5 6.5 0 10-13 0C5.5 15.2 12 21 12 21z"></path>
+              <circle cx="12" cy="10.5" r="2.2"></circle>
+            </svg>
+            Manage locations
+          </button>
+        </div>
       </div>
     </div>
 
@@ -858,6 +906,31 @@ const weekLabel =
     })
     wire(() => {}, entryModal, document.getElementById("entry-cancel"))
 
+    // Manage dropdown menu (groups "Add project" + "Manage locations")
+    const manageMenu = document.getElementById("manage-menu")
+    const manageMenuTrigger = document.getElementById("manage-menu-trigger")
+    const manageMenuPanel = document.getElementById("manage-menu-panel")
+    function closeManageMenu() {
+      manageMenuPanel?.setAttribute("hidden", "")
+      manageMenuTrigger?.setAttribute("aria-expanded", "false")
+    }
+    manageMenuTrigger?.addEventListener("click", (e) => {
+      e.stopPropagation()
+      if (manageMenuPanel?.hasAttribute("hidden")) {
+        manageMenuPanel.removeAttribute("hidden")
+        manageMenuTrigger.setAttribute("aria-expanded", "true")
+      } else {
+        closeManageMenu()
+      }
+    })
+    manageMenuPanel?.querySelectorAll("button").forEach((b) => b.addEventListener("click", closeManageMenu))
+    document.addEventListener("click", (e) => {
+      if (manageMenu && !manageMenu.contains(e.target as Node)) closeManageMenu()
+    })
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeManageMenu()
+    })
+
     // Manage projects modal — open from the button or by clicking a project name
     const manageProjectsModal = document.getElementById("manage-projects-modal") as HTMLDialogElement | null
     document.getElementById("open-manage-projects")?.addEventListener("click", () => manageProjectsModal?.showModal())
@@ -956,6 +1029,15 @@ const weekLabel =
       d.setDate(d.getDate() - dow)
       const p = (n: number) => String(n).padStart(2, "0")
       window.location.href = `/timesheet?start=${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+    })
+  </script>
+
+  <script>
+    import { authClient } from "../lib/auth-client"
+
+    document.getElementById("signout")?.addEventListener("click", async () => {
+      await authClient.signOut()
+      window.location.href = "/login"
     })
   </script>
 </Layout>
