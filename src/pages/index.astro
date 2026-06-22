@@ -8,6 +8,8 @@ const projects = [
     description: "Healthcare coordination platform for care plans, patients, encounters, and messaging.",
     tags: ["Rails", "React", "Postgres"],
     image: "/work/kali-care.png",
+    w: 539,
+    h: 1000,
   },
   {
     name: "Playlib",
@@ -15,6 +17,8 @@ const projects = [
     description: "Online booking platform for padel, tennis and racket sports clubs.",
     tags: ["Rails", "React", "Postgres"],
     image: "/work/playlib.png",
+    w: 593,
+    h: 1046,
   },
   {
     name: "Immobilier",
@@ -22,6 +26,8 @@ const projects = [
     description: "Real estate platform for the Brazilian market.",
     tags: ["Rails", "React", "SQLite"],
     image: "/work/immobilier.png",
+    w: 1165,
+    h: 914,
   },
   {
     name: "Reserva Ink",
@@ -29,6 +35,8 @@ const projects = [
     description: "Booking platform for tattoo studios across Brazil.",
     tags: ["Rails", "React", "Postgres", "Redis"],
     image: "/work/reserva-ink.png",
+    w: 1507,
+    h: 848,
   },
   {
     name: "Timesheet",
@@ -36,6 +44,8 @@ const projects = [
     description: "Internal tool to log hours worked per project, week by week.",
     tags: ["Astro", "Turso", "Drizzle"],
     image: "/work/timesheet.png",
+    w: 1179,
+    h: 651,
   },
 ]
 ---
@@ -47,15 +57,31 @@ const projects = [
       <img src="/avatar.jpg" alt="Flavio Antelo" class="w-16 h-16 rounded-full object-cover flex-shrink-0" />
       <div>
         <h1 class="text-2xl font-semibold text-gray-900 mb-1">Flavio Antelo</h1>
-        <p class="text-gray-500 text-sm">Brazil · Based in France</p>
+        <p class="flex items-center gap-1 text-gray-500 text-sm">
+          <svg
+            class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 21s6.5-5.8 6.5-10.5a6.5 6.5 0 10-13 0C5.5 15.2 12 21 12 21z"></path>
+            <circle cx="12" cy="10.5" r="2.2"></circle>
+          </svg>
+          <span><span class="inline-block align-middle translate-y-[0.5px]">🇧🇷</span> living in France</span>
+        </p>
       </div>
     </div>
 
     <p class="text-xl text-gray-800 leading-relaxed mb-4 max-w-xl">
-      Ex-developer turned entrepreneur. I build agent loops and software systems that run businesses.
+      I build custom software and AI automations that run your business.
     </p>
     <p class="text-gray-500 leading-relaxed mb-10 max-w-xl">
-      Available for freelance projects, from product architecture to full-stack implementation and AI integrations.
+      Small and medium businesses hire me to build the software that isn't their core business. Custom apps, internal
+      tools, and AI agents that handle the work your teams shouldn't be doing by hand.
     </p>
 
     <!-- Rate + CTA -->
@@ -83,26 +109,29 @@ const projects = [
   <!-- Projects -->
   <section class="max-w-3xl mx-auto px-6 pb-16">
     <h2 class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-6">Things I've shipped</h2>
-    <div class="grid gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
       {
         projects.map((project) => (
           <a
             href={project.url}
-            target={project.url.startsWith("http") ? "_blank" : undefined}
-            rel={project.url.startsWith("http") ? "noopener noreferrer" : undefined}
-            class="group flex items-center gap-4 p-4 border border-gray-100 rounded-xl hover:border-gray-300 transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+            class:list={[
+              "group block rounded-xl border border-gray-100 overflow-hidden hover:border-gray-300 hover:shadow-sm transition-all",
+              project.w > project.h && "sm:col-span-2",
+            ]}
           >
-            {project.image && (
-              <div class="w-1/3 flex-shrink-0 aspect-[4/3] rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
-                <img
-                  src={project.image}
-                  alt={`${project.name} screenshot`}
-                  loading="lazy"
-                  class="w-full h-full object-cover object-top"
-                />
-              </div>
-            )}
-            <div class="flex-1 min-w-0">
+            <div class="bg-gray-50 border-b border-gray-100">
+              <img
+                src={project.image}
+                alt={`${project.name} screenshot`}
+                width={project.w}
+                height={project.h}
+                loading="lazy"
+                class="block w-full h-auto group-hover:opacity-95 transition-opacity"
+              />
+            </div>
+            <div class="p-4">
               <div class="flex items-center gap-2 mb-1">
                 <h3 class="text-sm font-medium text-gray-900">{project.name}</h3>
                 <svg
@@ -111,16 +140,7 @@ const projects = [
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  {project.url.startsWith("http") ? (
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M7 17L17 7M17 7H7M17 7v10"
-                    />
-                  ) : (
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M13 6l6 6-6 6" />
-                  )}
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17L17 7M17 7H7M17 7v10" />
                 </svg>
               </div>
               <p class="text-sm text-gray-500 leading-relaxed mb-3">{project.description}</p>
@@ -141,15 +161,16 @@ const projects = [
     <h2 class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-6">A bit about me</h2>
     <div class="prose prose-sm text-gray-600 leading-relaxed space-y-4 max-w-xl">
       <p>
-        I first built for the web back in '99, when Dreamweaver 3 had just launched, and I've been writing Ruby on Rails
-        since 2011. Along the way I shipped products across healthcare, real estate, and e-commerce, and over time I
-        became more interested in the systems that run businesses than in the code itself.
+        I first built for the web back in '99, when Dreamweaver 3 had just launched, and I've been shipping Ruby on
+        Rails since 2011. Along the way I built products across healthcare, real estate, and e-commerce, and I grew more
+        interested in the systems that run a business than in the code itself.
       </p>
       <p>
-        Today I help companies ship faster. I design architecture, build full-stack features, and integrate AI agents
-        into real workflows.
+        Today I help small and medium businesses move faster. I design the architecture, build the full-stack product,
+        and wire in AI agents that automate the slow, repetitive work. You get a senior engineer who ships, not a team
+        you have to manage.
       </p>
-      <p>Based in France, working globally. Available for both short engagements and longer-term collaborations.</p>
+      <p>Based in France, working globally. Available for short, focused engagements or longer-term builds.</p>
     </div>
   </section>
 </Layout>
