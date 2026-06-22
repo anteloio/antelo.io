@@ -1,5 +1,5 @@
 ---
-title: "How to Add Google Sign-In to Rails Without Using Devise"
+title: "How to add Google Sign-In to Rails without Devise"
 description: "Implement Google login on your Ruby on Rails app with pure Omniauth, no Devise required."
 publishedAt: 2023-08-31
 ---
