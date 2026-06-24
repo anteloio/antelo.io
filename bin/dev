@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# Launch the project locally: ensure dependencies are installed, then start the
+# Astro dev server at http://localhost:4321. Any extra args are passed through
+# to `astro dev` (e.g. bin/dev --port 3000).
+#
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# Install dependencies if node_modules is missing.
+if [ ! -d node_modules ]; then
+  echo "bin/dev: installing dependencies..."
+  pnpm install
+fi
+
+exec pnpm dev "$@"
