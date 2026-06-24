@@ -82,8 +82,6 @@ const intentUrl = (text: string) => `https://x.com/intent/tweet?text=${encodeURI
                   {!sent && (
                     <a
                       href={intentUrl(tweet.text)}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       class="inline-flex items-center gap-2 text-sm bg-black text-white px-4 py-1.5 rounded-full hover:bg-gray-800 transition-colors"
                     >
                       Post on X<span aria-hidden="true">→</span>

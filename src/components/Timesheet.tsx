@@ -72,6 +72,37 @@ const dateLabel = (ds: string) => {
   return d.getFullYear() === currentYear ? monthDayFmt.format(d) : `${monthDayFmt.format(d)}, ${d.getFullYear()}`
 }
 
+// Week navigation is fully derivable on the client (mirrors computeWeekMeta in
+// api/timesheet.ts). Only the table data needs the backend.
+const pad = (n: number) => String(n).padStart(2, "0")
+const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
+const mondayOf = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return addDays(x, -((x.getDay() + 6) % 7)) }
+
+function computeWeekMeta(startParam: string): WeekNav {
+  const weekStart = mondayOf(new Date(startParam + "T00:00:00"))
+  const weekDates = Array.from({ length: 7 }, (_, i) => fmtDate(addDays(weekStart, i)))
+  const endStr = weekDates[6]
+  const withYear = (d: Date) =>
+    d.getFullYear() === currentYear ? monthDayFmt.format(d) : `${monthDayFmt.format(d)}, ${d.getFullYear()}`
+  const thisMonday = mondayOf(new Date())
+  const weekOffset = Math.round((weekStart.getTime() - thisMonday.getTime()) / (7 * 86400000))
+  const weekLabel =
+    weekOffset === 0 ? "This week" :
+    weekOffset === -1 ? "Last week" :
+    weekOffset === 1 ? "Next week" :
+    `${withYear(weekStart)} - ${withYear(new Date(endStr + "T00:00:00"))}`
+  return {
+    weekDates,
+    startStr: fmtDate(weekStart),
+    prevStart: fmtDate(addDays(weekStart, -7)),
+    nextStart: fmtDate(addDays(weekStart, 7)),
+    thisStart: fmtDate(thisMonday),
+    todayStr: fmtDate(new Date()),
+    weekLabel,
+  }
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 async function post(body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -564,25 +595,19 @@ function TimesheetInner({
   const [isNavigating, startTransition] = useTransition()
 
   const navigateTo = (newStart: string, push = true) => {
+    // Header (arrows, date, week label) is computed on the client and updates
+    // instantly. Only the table data below waits for the backend.
+    setWeek(computeWeekMeta(newStart))
+    if (push) history.pushState(null, "", `/timesheet?start=${newStart}`)
     startTransition(async () => {
       try {
         const res = await fetch(`/api/timesheet?start=${newStart}`)
         const data = await res.json()
-        setWeek({
-          weekDates: data.weekDates,
-          startStr: data.startStr,
-          prevStart: data.prevStart,
-          nextStart: data.nextStart,
-          thisStart: data.thisStart,
-          weekLabel: data.weekLabel,
-          todayStr: data.todayStr,
-        })
         setState((s) => ({
           ...s,
           entries: Object.fromEntries(data.entries.map((e: { projectId: number; date: string; hours: number }) => [`${e.projectId}:${e.date}`, e.hours])),
           dayLocations: Object.fromEntries(data.dayLocations.map((dl: { date: string; locationId: number }) => [dl.date, dl.locationId])),
         }))
-        if (push) history.pushState(null, "", `/timesheet?start=${newStart}`)
       } catch {
         toast.error("Failed to load week")
       }
@@ -819,15 +844,13 @@ function TimesheetInner({
           <div className="inline-flex items-center h-9 rounded-lg border border-gray-300 overflow-hidden divide-x divide-gray-300">
             <button
               type="button"
-              disabled={isNavigating}
-              className="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-40"
+              className="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors"
               aria-label="Previous week"
               onClick={() => navigateTo(week.prevStart)}
             >‹</button>
             <button
               type="button"
-              disabled={isNavigating}
-              className="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-40"
+              className="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors"
               aria-label="Next week"
               onClick={() => navigateTo(week.nextStart)}
             >›</button>
@@ -836,8 +859,7 @@ function TimesheetInner({
           {week.startStr !== week.thisStart && (
             <button
               type="button"
-              disabled={isNavigating}
-              className="h-9 px-3 inline-flex items-center rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40"
+              className="h-9 px-3 inline-flex items-center rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors"
               onClick={() => navigateTo(week.thisStart)}
             >Today</button>
           )}

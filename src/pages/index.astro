@@ -88,8 +88,6 @@ const projects = [
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
       <a
         href="https://wa.me/33766884815"
-        target="_blank"
-        rel="noopener noreferrer"
         class="inline-flex items-center gap-2 bg-black text-white text-sm font-medium px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -114,8 +112,6 @@ const projects = [
         projects.map((project) => (
           <a
             href={project.url}
-            target="_blank"
-            rel="noopener noreferrer"
             class:list={[
               "group block rounded-xl border border-gray-100 overflow-hidden hover:border-gray-300 hover:shadow-sm transition-all",
               project.w > project.h && "sm:col-span-2",
