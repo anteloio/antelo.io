@@ -24,7 +24,7 @@ servers:
 
 # SSL via Let's Encrypt. antelo.io is canonical; www redirects in ApplicationController.
 proxy:
-  ssl: false # flip to true on the second deploy, once DNS resolves and http works
+  ssl: true
   hosts:
     - antelo.io
     - www.antelo.io
