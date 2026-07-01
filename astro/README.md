@@ -1,4 +1,7 @@
-# antelo.io
+# antelo.io (legacy Astro app)
+
+> This app is being replaced by the Rails app in `../rails`. Kept for
+> reference until the Rails deploy is live; do not add features here.
 
 Personal portfolio and blog. Built with [Astro](https://astro.build) and Tailwind CSS.
 

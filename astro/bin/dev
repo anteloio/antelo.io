@@ -11,7 +11,7 @@
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
-cd "$repo_root"
+cd "$repo_root/astro"
 
 PORT="${PORT:-4321}"
 
