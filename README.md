@@ -1,39 +1,52 @@
 # antelo.io
 
-Personal site: portfolio, blog, tweet queue and a timesheet app.
+Rails 8 app behind antelo.io: landing page, blog, tweet queue (`/x`) and the
+timesheet (`/timesheet`).
 
-Two apps live here during the migration to Rails:
+## Stack
 
-- `rails/` - the Rails 8 app. This is the live codebase: landing page, blog,
-  tweet queue and timesheet. SQLite locally and in production, deployed to a
-  single Hetzner VM with Kamal.
-- `astro/` - the legacy Astro app it replaces (was deployed on Vercel with
-  Turso). Kept for reference until the Rails app is live, then it can be
-  deleted.
-
-Content is markdown, no database involved:
-
-- Blog posts: `rails/content/blog/*.md`
-- Tweets: `rails/content/tweets/*.md` (filename carries the date; front matter
-  tracks `sentAt` when a tweet is marked as posted)
+- Rails 8.1, Hotwire (Turbo + Stimulus), importmaps, no Node build.
+- Tailwind CSS via tailwindcss-rails.
+- SQLite in every environment. Database files live in `storage/`.
+- Google sign-in with OmniAuth, no Devise
+  (see /blog/google-sign-in-rails-without-devise).
+- Blog posts and tweets are markdown files in `content/`, read by PORO models
+  (`Post`, `Tweet`). No content in the database.
+- Formatting: Syntax Tree (`bundle exec stree write ...`, config in `.streerc`),
+  RuboCop aligned with it (see /blog/rails-auto-formatting-on-vscode).
 
 ## Run locally
 
 ```bash
-bin/dev          # Rails app at http://localhost:4321
-astro/bin/dev    # legacy Astro app, same port
+bin/setup        # bundle + db:prepare
+bin/dev          # serves on http://localhost:4321 (pinned for Google OAuth)
 ```
 
-The port is pinned to 4321 because the Google OAuth client is registered with
-`http://localhost:4321/api/auth/callback/google`.
+Secrets: Google client id/secret live in `config/credentials.yml.enc`
+(`bin/rails credentials:edit`, requires the gitignored `config/master.key`).
 
-## CI
+## Tests and CI
 
 ```bash
-bin/ci           # rubocop + security audits + tests, plus an Astro build check
+bin/ci           # rubocop, bundler-audit, importmap audit, brakeman, tests
 ```
 
-## Deploy
+## Deploy (Hetzner + Kamal)
 
-See `rails/README.md`. Short version: Kamal to a Hetzner VM, SQLite on a
-persistent volume, `bin/kamal deploy`.
+Follows /blog/deploying-rails-with-kamal and /blog/deploying-to-one-vm.
+The app runs on a single Hetzner VM with Kamal's built-in local registry
+(no Docker Hub), remote amd64 builder and SQLite on the `antelo_storage`
+volume:
+
+```bash
+bin/kamal deploy   # local Docker daemon must be running
+```
+
+Back up the SQLite files off the server (e.g. a daily cron to Hetzner
+Object Storage).
+
+## History
+
+Until July 2026 this site was an Astro app deployed on Vercel with Turso
+(see the git history before the Rails migration). `lib/tasks/legacy.rake`
+holds the one-time importer that pulled the Turso data into SQLite.

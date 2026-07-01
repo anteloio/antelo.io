@@ -11,7 +11,7 @@ cat .mdless/_voice.md
 ## Step 1 — Read all published posts
 
 ```bash
-for f in rails/content/blog/*.md; do
+for f in content/blog/*.md; do
   if ! grep -q "draft: true" "$f"; then echo "=== $f ==="; cat "$f"; echo; fi
 done
 ```
@@ -19,7 +19,7 @@ done
 ## Step 2 — Read all drafts
 
 ```bash
-for f in rails/content/blog/*.md; do
+for f in content/blog/*.md; do
   if grep -q "draft: true" "$f"; then echo "=== $f ==="; cat "$f"; echo; fi
 done
 ```
@@ -33,7 +33,7 @@ Audit each draft's outline across two dimensions:
 ## Step 3 — Read the tweet queue
 
 ```bash
-for f in rails/content/tweets/*.md; do echo "=== $f ==="; cat "$f"; echo; done
+for f in content/tweets/*.md; do echo "=== $f ==="; cat "$f"; echo; done
 ```
 
 Read the queue as a whole, not file by file in isolation. Note theme and tone across consecutive dates.

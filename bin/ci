@@ -1,17 +1,6 @@
-#!/usr/bin/env bash
-#
-# Repo-wide CI: runs the Rails suite (rubocop, security audits, tests) and,
-# when pnpm is available, checks that the legacy Astro app still builds.
-#
-set -euo pipefail
+#!/usr/bin/env ruby
+require_relative "../config/boot"
+require "active_support/continuous_integration"
 
-repo_root="$(git rev-parse --show-toplevel)"
-
-(cd "$repo_root/rails" && bin/ci)
-
-if command -v pnpm >/dev/null 2>&1; then
-  echo
-  echo "Astro (legacy): build check"
-  (cd "$repo_root/astro" && [ -d node_modules ] || (cd "$repo_root/astro" && pnpm install))
-  (cd "$repo_root/astro" && pnpm build > /dev/null && echo "astro build ok")
-fi
+CI = ActiveSupport::ContinuousIntegration
+require_relative "../config/ci.rb"

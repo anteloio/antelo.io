@@ -9,13 +9,13 @@ When you need to write or edit content (blog posts, tweets, etc.), read `.mdless
 
 # Layout
 
-- `rails/` is the app (Rails 8, Hotwire, SQLite, Kamal). Blog posts live in `rails/content/blog/*.md`, tweets in `rails/content/tweets/*.md`.
-- `astro/` is the legacy app being replaced. Do not add features there.
+Rails 8 app (Hotwire, SQLite, Kamal to Hetzner). Blog posts live in `content/blog/*.md`, tweets in `content/tweets/*.md`. Both are read by PORO models (`Post`, `Tweet`); no content in the database.
 
 # Dev server
 
-`bin/dev` — runs the Rails app at http://localhost:4321 (port pinned for the Google OAuth callback). Production: https://antelo.io. Blog posts at `/blog/[slug]`.
+`bin/dev` — runs at http://localhost:4321 (port pinned for the Google OAuth callback). Production: https://antelo.io. Blog posts at `/blog/[slug]`.
 
-# CI
+# CI and deploy
 
-`bin/ci` — rubocop + security audits + tests. Format Ruby with `bundle exec stree write <files>` (Syntax Tree, config in `rails/.streerc`).
+- `bin/ci` — rubocop + security audits + tests. Format Ruby with `bundle exec stree write <files>` (Syntax Tree, config in `.streerc`).
+- `bin/kamal deploy` — deploys to the Hetzner VM. Needs the local Docker daemon running (Kamal's registry container runs locally).

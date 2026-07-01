@@ -49,3 +49,9 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Repo tooling that must not land in the image
+/.mdless
+/.conductor
+/.context
+/.claude

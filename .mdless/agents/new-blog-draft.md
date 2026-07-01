@@ -1,6 +1,6 @@
 # New Blog Draft
 
-One invocation = one draft file in `rails/content/blog/`. Quality over quantity.
+One invocation = one draft file in `content/blog/`. Quality over quantity.
 
 ## Goals
 
@@ -16,7 +16,7 @@ Topics: AI automations, AI tooling, agent systems, Maker tools, Engineering prod
 ## Step 1 — Check what's already covered
 
 ```bash
-for f in rails/content/blog/*.md; do echo "$f:"; head -4 "$f"; echo; done
+for f in content/blog/*.md; do echo "$f:"; head -4 "$f"; echo; done
 ```
 
 ## Step 2 — Find one strong idea
@@ -44,7 +44,7 @@ At the end, include a **Sources** section with links to relevant HN threads, blo
 
 ## Step 4 — Create the draft
 
-Use `.mdless/agents/example-good-draft.md` as a reference for format and quality. Write to `rails/content/blog/<slug>.md` and print the file.
+Use `.mdless/agents/example-good-draft.md` as a reference for format and quality. Write to `content/blog/<slug>.md` and print the file.
 
 ## Rules
 
