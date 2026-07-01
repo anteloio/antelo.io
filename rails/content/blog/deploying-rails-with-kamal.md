@@ -93,3 +93,39 @@ kamal deploy
 ```
 
 After DNS propagates, that's it. A single server, deployed with two commands. Most Rails apps don't need more than this.
+
+## Q&A
+
+Questions that came up when I migrated this very site to this setup. I keep adding to this section as new ones show up.
+
+### The localhost:5555 registry runs where? My machine or the server?
+
+Your machine. The one where you type `kamal deploy`.
+
+Kamal boots a small registry container locally and wires the production server to it through an SSH tunnel. That is why your local Docker daemon has to be running even when the build happens on the remote builder. I learned this the annoying way: my first setup failed with `failed to start containers: kamal-docker-registry` because Docker was stopped on my laptop.
+
+It also means the image travels through your connection. With the remote builder from this post, the server builds the image, pushes it through the tunnel to your machine, then pulls it back. Sounds silly on paper. In practice, with layer caching, a deploy of this site takes about a minute.
+
+### Is running the registry on my own machine a good idea?
+
+For one person deploying one app to one VM: yes. It is the option with the least moving parts. No account, no access token to create and rotate, no storage quota, and your images never sit on someone else's infrastructure.
+
+It stops being a good idea when your laptop stops being the center of your deploys. CI deploying on merge. A teammate who also ships. Images in the gigabytes. Hotel wifi. Any of those, move to a hosted registry.
+
+### Why not GitHub Container Registry? It is free, right?
+
+Free for public images. For private images the free plan gives you a small storage and transfer quota, and a Rails image eats it fast: every deploy the server pulls a few hundred MB, and that counts as transfer out.
+
+That said, ghcr.io is a solid choice if your code already lives on GitHub and you want deploys that do not depend on your laptop:
+
+```yaml
+image: ghcr.io/{your_github_username}/{your_project_name}
+
+registry:
+  server: ghcr.io
+  username: {your_github_username}
+  password:
+    - KAMAL_REGISTRY_PASSWORD # a personal access token with write:packages
+```
+
+The real difference between all these options is small. Local registry wins on zero setup. A hosted registry wins the moment deploys need to happen without you. Pick one and ship.
