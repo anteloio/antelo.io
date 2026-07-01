@@ -864,10 +864,21 @@ function TimesheetInner({
             >Today</button>
           )}
         </div>
-        <ManageMenu
-          onManageProjects={() => setModal({ type: "manage-projects" })}
-          onManageLocations={() => setModal({ type: "manage-locations" })}
-        />
+        <div className="flex items-center gap-2">
+          <a
+            href="/timesheet/report"
+            className="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-3" />
+            </svg>
+            Report
+          </a>
+          <ManageMenu
+            onManageProjects={() => setModal({ type: "manage-projects" })}
+            onManageLocations={() => setModal({ type: "manage-locations" })}
+          />
+        </div>
       </div>
 
       {/* Table */}

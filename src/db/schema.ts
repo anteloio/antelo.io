@@ -108,7 +108,7 @@ export const projects = sqliteTable("projects", {
   /** Owner. Null on rows created before auth; backfilled by migration. */
   userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  /** Hourly rate for the project, in euros. Null = not set. */
+  /** Hourly rate for the project, in dollars. Null = not set. */
   hourlyRate: real("hourly_rate"),
 })
 
