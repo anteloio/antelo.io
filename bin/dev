@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# Launch the Rails app locally on a fixed port (default 4321). The port is
+# pinned on purpose: it must match the Google OAuth callback URL
+# (http://localhost:4321/api/auth/callback/google) for sign-in to work. If the
+# port is already taken (e.g. a stale server or a sibling Conductor workspace),
+# we free it first so this workspace always owns it. Override with PORT=xxxx.
+#
+# The legacy Astro app has its own launcher at astro/bin/dev.
+#
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root/rails"
+
+PORT="${PORT:-4321}"
+
+# Free the port: kill whatever is listening on it.
+pids="$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)"
+if [ -n "$pids" ]; then
+  echo "bin/dev: port $PORT in use by PID(s) $pids - freeing it"
+  kill $pids 2>/dev/null || true
+  sleep 0.5
+  # Escalate if anything is still holding the port.
+  pids="$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)"
+  [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
+fi
+
+# Install dependencies if missing.
+bundle check >/dev/null 2>&1 || bundle install
+
+bin/rails db:prepare
+
+export PORT
+exec bin/dev

@@ -1,0 +1,67 @@
+# Deploys to a single Hetzner VM with Kamal, SQLite on a persistent volume.
+# See /blog/deploying-rails-with-kamal, /blog/deploying-to-one-vm and
+# /blog/kamal-in-production for the full walkthrough.
+#
+# First deploy checklist:
+#   1. Create the Hetzner server (Ubuntu, CX22, public IPv4) with your SSH key
+#      and put its IP below (servers and builder.remote).
+#   2. Point DNS: A records for antelo.io and www.antelo.io to that IP.
+#   3. Set your Docker registry username below and export KAMAL_REGISTRY_PASSWORD.
+#   4. Deploy with ssl: false first; once the app answers on http, flip
+#      ssl: true and deploy again (avoids the ACME provisioning race,
+#      see /blog/kamal-in-production).
+#   5. bin/kamal setup (first time), then bin/kamal deploy.
+
+# Name of your application. Used to uniquely configure containers.
+service: antelo
+
+# Name of the container image.
+image: anteloio/antelo
+
+# Deploy to these servers.
+servers:
+  web:
+    - HETZNER_SERVER_IP
+
+# SSL via Let's Encrypt. antelo.io is canonical; www redirects in ApplicationController.
+proxy:
+  ssl: false # flip to true on the second deploy, once DNS resolves and http works
+  hosts:
+    - antelo.io
+    - www.antelo.io
+
+# Where you keep your container images.
+registry:
+  username: anteloio
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Inject ENV variables into containers (secrets come from .kamal/secrets).
+env:
+  secret:
+    - RAILS_MASTER_KEY
+  clear:
+    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
+    SOLID_QUEUE_IN_PUMA: true
+
+# Aliases are triggered with "bin/kamal <alias>".
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
+
+# Persistent storage for the SQLite database files (storage/production.sqlite3
+# and friends). Back this up off the server, e.g. a daily cron job to Hetzner
+# Object Storage.
+volumes:
+  - "antelo_storage:/rails/storage"
+
+# Bridge fingerprinted assets between versions to avoid 404s on in-flight requests.
+asset_path: /rails/public/assets
+
+# Build on the server itself: production-compatible amd64 images with no
+# cross-arch emulation from an ARM Mac.
+builder:
+  arch: amd64
+  remote: ssh://root@HETZNER_SERVER_IP

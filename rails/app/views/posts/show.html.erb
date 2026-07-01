@@ -1,0 +1,13 @@
+<% content_for :title, "#{@post.title} · Flavio Antelo" %>
+<% content_for :description, @post.description %>
+
+<article class="max-w-3xl mx-auto px-6 pt-20 pb-24">
+  <a href="<%= posts_path %>" class="text-sm text-gray-400 hover:text-gray-900 transition-colors">← Blog</a>
+  <header class="mt-8 mb-10">
+    <p class="text-xs text-gray-400 mb-2"><%= @post.published_at.strftime("%B %-d, %Y") %></p>
+    <h1 class="text-3xl font-semibold text-gray-900 leading-tight"><%= @post.title %></h1>
+  </header>
+  <div class="prose prose-gray prose-sm sm:prose-base max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-gray-900 prose-strong:text-gray-900">
+    <%= @post.html %>
+  </div>
+</article>

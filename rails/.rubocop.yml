@@ -1,0 +1,25 @@
+# Omakase Ruby styling for Rails, minus anything that fights the Syntax Tree
+# formatter (see /blog/rails-auto-formatting-on-vscode).
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+  syntax_tree: config/rubocop.yml
+
+# Syntax Tree runs with plugin/single_quotes and plugin/trailing_comma (.streerc),
+# so align the string and comma cops with what the formatter writes.
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: single_quotes
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyle: consistent_comma
+
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyle: consistent_comma
+
+Style/TrailingCommaInArguments:
+  EnforcedStyle: consistent_comma
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: false

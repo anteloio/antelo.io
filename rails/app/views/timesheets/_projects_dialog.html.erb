@@ -1,0 +1,55 @@
+<dialog class="rounded-2xl p-0 shadow-2xl backdrop:bg-gray-900/40 w-[90vw] max-w-lg"
+        data-timesheet-target="projectsDialog" data-action="click->timesheet#backdropClose">
+  <div class="relative p-6">
+    <%= render "close_button" %>
+    <h2 class="text-base font-semibold text-gray-900 mb-4">Manage projects</h2>
+
+    <% if @projects.empty? %>
+      <p class="text-sm text-gray-400 mb-4">No projects yet. Add your first one below.</p>
+    <% else %>
+      <div class="flex flex-col gap-2 mb-4">
+        <div class="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wide text-gray-400">
+          <span class="flex-1">Name</span>
+          <span class="w-24">Rate</span>
+          <span class="w-9"></span>
+        </div>
+        <% @projects.each do |project| %>
+          <div class="flex items-center gap-2">
+            <%= form_with url: project_path(project), method: :patch,
+                  class: "flex-1 flex items-center gap-2", data: { keep_open: "projectsDialog" } do %>
+              <input type="hidden" name="start" value="<%= params[:start] %>">
+              <input type="text" name="project[name]" value="<%= project.name %>" required
+                     data-action="blur->timesheet#submitOnBlur"
+                     class="flex-1 min-w-0 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none">
+              <div class="relative w-24 flex-shrink-0">
+                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input type="number" name="project[hourly_rate]" value="<%= project.hourly_rate %>"
+                       step="any" min="0" placeholder="-"
+                       data-action="blur->timesheet#submitOnBlur"
+                       class="w-full text-sm pl-6 pr-2 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none tabular-nums">
+              </div>
+            <% end %>
+            <% count = @entry_counts[project.id] || 0 %>
+            <% message = count == 0 ? "Delete this project?" : count == 1 ? "Delete this project and its 1 entry?" : "Delete this project and all its #{count} entries?" %>
+            <%= button_to "×", project_path(project, start: params[:start].presence),
+                  method: :delete,
+                  form: { data: { turbo_confirm: message } },
+                  aria: { label: "Delete #{project.name}" },
+                  class: "w-9 h-9 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors flex-shrink-0" %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= form_with url: projects_path, class: "flex items-center gap-2 border-t border-gray-100 pt-4",
+          data: { keep_open: "projectsDialog" } do %>
+      <input type="hidden" name="start" value="<%= params[:start] %>">
+      <input type="text" name="project[name]" placeholder="New project name" required
+             class="flex-1 min-w-0 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 focus:outline-none">
+      <button type="submit"
+              class="text-sm px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-700 transition-colors flex-shrink-0">
+        Add
+      </button>
+    <% end %>
+  </div>
+</dialog>

@@ -1,0 +1,229 @@
+<% content_for :title, "Timesheet · Flavio Antelo" %>
+<% content_for :description, "Timesheet." %>
+<% content_for :noindex, true %>
+<% content_for :hide_footer, true %>
+<% content_for :wide, true %>
+
+<%
+  day_names = %w[Mon Tue Wed Thu Fri Sat Sun]
+  hours_for = ->(project_id, date) { @entries[[project_id, date]] || 0 }
+  row_total = ->(project_id) { @week.dates.sum { |d| hours_for.call(project_id, d) } }
+  day_total = ->(date) { @projects.sum { |p| hours_for.call(p.id, date) } }
+  week_total = @week.dates.sum { |d| day_total.call(d) }
+  row_money = ->(project) { project.hourly_rate ? row_total.call(project.id) * project.hourly_rate : nil }
+  week_money = @projects.sum { |p| row_money.call(p) || 0 }
+  has_any_rate = @projects.any? { |p| p.hourly_rate.to_f > 0 }
+  day_money = ->(date) { @projects.sum { |p| p.hourly_rate ? hours_for.call(p.id, date) * p.hourly_rate : 0 } }
+  location_names = @locations.index_by(&:id).transform_values(&:name)
+%>
+
+<section class="max-w-5xl mx-auto px-6 pt-16 pb-24" style="font-feature-settings: 'cv02' 1, 'tnum' 1;"
+         data-controller="timesheet">
+  <!-- Account -->
+  <div class="flex items-center justify-end gap-3 mb-6 text-xs text-gray-400">
+    <span class="truncate max-w-[16rem]"><%= current_user.email %></span>
+    <span aria-hidden="true">·</span>
+    <a href="<%= sign_out_path %>" class="hover:text-gray-900 transition-colors underline-offset-2 hover:underline">
+      Sign out
+    </a>
+  </div>
+
+  <!-- Header -->
+  <div class="flex items-end justify-between flex-wrap gap-6 mb-8">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Timesheet</h1>
+      <p class="text-sm text-gray-500 mt-1"><%= date_label(@week.start) %> – <%= date_label(@week.end_date) %></p>
+    </div>
+    <div class="text-right">
+      <div class="text-3xl font-semibold tabular-nums text-gray-900 leading-none">
+        <%= fmt_hours(week_total) %><span class="text-base font-normal text-gray-400 ml-0.5">h</span>
+      </div>
+      <div class="text-sm font-medium text-gray-500 tabular-nums mt-1.5 <%= "invisible" unless week_money > 0 %>">
+        <%= week_money > 0 ? fmt_money(week_money) : "-" %>
+      </div>
+      <div class="text-xs text-gray-400 mt-1 uppercase tracking-wide">this week</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="flex items-center justify-between mb-4 gap-4">
+    <div class="flex items-center gap-2">
+      <div class="inline-flex items-center h-9 rounded-lg border border-gray-300 overflow-hidden divide-x divide-gray-300">
+        <a href="<%= timesheet_path(start: @week.prev_start) %>" aria-label="Previous week"
+           class="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors">‹</a>
+        <a href="<%= timesheet_path(start: @week.next_start) %>" aria-label="Next week"
+           class="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors">›</a>
+      </div>
+
+      <div class="relative">
+        <button type="button" data-action="timesheet#openWeekPicker"
+                class="inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="4.5" width="18" height="16" rx="2"></rect>
+            <path stroke-linecap="round" d="M3 9.5h18M8 3v3M16 3v3"></path>
+          </svg>
+          <span class="font-medium tabular-nums"><%= @week.label %></span>
+        </button>
+        <input type="date" value="<%= @week.start %>" class="sr-only" aria-hidden="true" tabindex="-1"
+               data-timesheet-target="weekPicker" data-action="timesheet#navigateToWeek">
+      </div>
+
+      <% unless @week.current? %>
+        <a href="<%= timesheet_path %>"
+           class="h-9 px-3 inline-flex items-center rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors">Today</a>
+      <% end %>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="<%= report_path %>"
+         class="h-9 px-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+        <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-3"></path>
+        </svg>
+        Report
+      </a>
+
+      <details class="relative" data-timesheet-target="manageMenu">
+        <summary aria-label="Manage" class="list-none [&::-webkit-details-marker]:hidden inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="1.6"></circle>
+            <circle cx="12" cy="12" r="1.6"></circle>
+            <circle cx="12" cy="19" r="1.6"></circle>
+          </svg>
+        </summary>
+        <div class="absolute right-0 top-full mt-1.5 z-20 w-52 rounded-lg border border-gray-200 bg-white shadow-lg py-1">
+          <button type="button" data-action="timesheet#openProjects"
+                  class="group flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h3.6a2 2 0 011.4.6L12.4 7H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path>
+            </svg>
+            Manage projects
+          </button>
+          <button type="button" data-action="timesheet#openLocations"
+                  class="group flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21s6.5-5.8 6.5-10.5a6.5 6.5 0 10-13 0C5.5 15.2 12 21 12 21z"></path>
+              <circle cx="12" cy="10.5" r="2.2"></circle>
+            </svg>
+            Manage locations
+          </button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <% if @projects.empty? %>
+    <div class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-20 text-center">
+      <p class="text-sm text-gray-500">No projects yet.</p>
+      <p class="text-xs text-gray-400 mt-1">Click "Manage projects" above to start tracking.</p>
+    </div>
+  <% else %>
+    <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr class="bg-gray-50/70 border-b border-gray-200">
+              <th class="sticky left-0 z-10 bg-gray-50/70 text-left font-medium text-gray-400 text-xs uppercase tracking-wide py-3 px-5 min-w-[150px]">Project</th>
+              <% @week.dates.each_with_index do |date, i| %>
+                <th class="text-center font-medium py-3 px-1 w-[68px] <%= "bg-gray-900/[0.04]" if date == Date.current %>">
+                  <div class="text-xs uppercase tracking-wide <%= i >= 5 ? "text-gray-300" : "text-gray-400" %>"><%= day_names[i] %></div>
+                  <div class="text-sm font-semibold tabular-nums mt-0.5 <%= date == Date.current ? "text-gray-900" : i >= 5 ? "text-gray-300" : "text-gray-600" %>">
+                    <%= date.day %>
+                  </div>
+                </th>
+              <% end %>
+              <th class="text-center font-medium text-gray-400 text-xs uppercase tracking-wide py-3 px-4 w-16">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @locations.any? %>
+              <tr class="border-b border-gray-100 bg-gray-50/40">
+                <td class="sticky left-0 z-10 bg-gray-50/40 py-2.5 px-5 align-middle whitespace-nowrap text-xs font-medium uppercase tracking-wide text-gray-400">
+                  Location
+                </td>
+                <% @week.dates.each_with_index do |date, i| %>
+                  <% location_name = location_names[@day_locations[date]] %>
+                  <td class="p-0 align-middle <%= "bg-gray-900/[0.03]" if date == Date.current %>">
+                    <button type="button" title="<%= location_name || "Set location" %>"
+                            class="group w-full h-full px-1 py-2 flex items-center justify-center cursor-pointer"
+                            data-action="timesheet#openDayLocation"
+                            data-date="<%= date %>"
+                            data-label="<%= day_names[i] %>, <%= month_day(date) %>"
+                            data-location-id="<%= @day_locations[date] || 0 %>">
+                      <span class="max-w-[60px] truncate text-xs rounded-md px-1.5 py-1 transition-colors <%= location_name ? "bg-gray-200/70 text-gray-700 group-hover:bg-gray-300/70" : "text-gray-300 group-hover:text-gray-500" %>">
+                        <%= location_name || "+" %>
+                      </span>
+                    </button>
+                  </td>
+                <% end %>
+                <td></td>
+              </tr>
+            <% end %>
+
+            <% @projects.each do |project| %>
+              <% total = row_total.call(project.id) %>
+              <% money = row_money.call(project) %>
+              <tr class="border-b border-gray-100 last:border-0 group">
+                <td class="sticky left-0 z-10 bg-white group-hover:bg-gray-50/80 transition-colors py-2.5 px-5 align-middle whitespace-nowrap">
+                  <button type="button" data-action="timesheet#openProjects"
+                          class="text-left text-gray-900 font-medium hover:text-gray-500 transition-colors">
+                    <%= project.name %>
+                  </button>
+                </td>
+                <% @week.dates.each_with_index do |date, i| %>
+                  <% hours = hours_for.call(project.id, date) %>
+                  <td class="p-0 align-middle <%= "bg-gray-900/[0.03]" if date == Date.current %>">
+                    <button type="button"
+                            class="group w-full h-full px-1 py-2 flex items-center justify-center cursor-pointer select-none"
+                            data-action="timesheet#openEntry"
+                            data-project-id="<%= project.id %>"
+                            data-project-name="<%= project.name %>"
+                            data-date="<%= date %>"
+                            data-label="<%= day_names[i] %>, <%= month_day(date) %>"
+                            data-hours="<%= hours > 0 ? fmt_hours(hours) : 0 %>">
+                      <span class="inline-flex items-center justify-center w-12 h-9 rounded-lg border tabular-nums transition-all <%= hours > 0 ? "border-gray-900 bg-gray-900 text-white font-medium shadow-sm group-hover:bg-gray-700" : "border-transparent text-gray-300 group-hover:border-gray-200 group-hover:bg-gray-50 group-hover:text-gray-500" %>">
+                        <%= hours > 0 ? fmt_hours(hours) : "+" %>
+                      </span>
+                    </button>
+                  </td>
+                <% end %>
+                <td class="text-center px-4 align-middle tabular-nums font-semibold <%= total > 0 ? "text-gray-700" : "text-gray-300" %>">
+                  <% if money %>
+                    <%= fmt_money(money) %>
+                  <% else %>
+                    <span><%= fmt_hours(total) %><span class="text-xs font-normal text-gray-400">h</span></span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="bg-gray-50/70 border-t border-gray-200">
+              <td class="sticky left-0 z-10 bg-gray-50/70 py-2.5 px-5 text-gray-400 text-xs uppercase tracking-wide">Daily</td>
+              <% @week.dates.each do |date| %>
+                <% daily_hours = day_total.call(date) %>
+                <% daily_money = day_money.call(date) %>
+                <td class="text-center px-1 py-2.5 text-xs font-medium tabular-nums <%= date == Date.current ? "bg-gray-900/[0.04] text-gray-900" : "text-gray-500" %>">
+                  <%= has_any_rate ? (daily_money > 0 ? fmt_money(daily_money) : "") : (daily_hours > 0 ? fmt_hours(daily_hours) : "") %>
+                </td>
+              <% end %>
+              <td class="text-center px-4 tabular-nums align-middle text-gray-900 font-semibold">
+                <% if week_money > 0 %>
+                  <%= fmt_money(week_money) %>
+                <% else %>
+                  <span><%= fmt_hours(week_total) %><span class="text-xs font-normal text-gray-400">h</span></span>
+                <% end %>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <%= render "entry_dialog" %>
+  <%= render "day_location_dialog" %>
+  <%= render "projects_dialog" %>
+  <%= render "locations_dialog" %>
+</section>

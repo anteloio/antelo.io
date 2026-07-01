@@ -3,7 +3,8 @@
 # Bootstrap a freshly created Conductor worktree:
 #   1. Link this worktree's gitignored .envrc to the canonical one in the repo
 #      root, so the TURSO + Google OAuth secrets live in one place per machine.
-#   2. Install node dependencies (each worktree has its own node_modules).
+#   2. Install dependencies for both apps (rails/ is the live app, astro/ is
+#      the legacy one kept around during the migration).
 #
 set -euo pipefail
 
@@ -19,4 +20,12 @@ direnv allow "$repo_root"
 echo "setup-worktree: linked .envrc -> $main_root/.envrc"
 
 # 2. Install dependencies.
-(cd "$repo_root" && pnpm install)
+(cd "$repo_root/rails" && bundle install)
+
+# Copy the Rails master key from the main checkout (gitignored, one per machine).
+if [ ! -f "$repo_root/rails/config/master.key" ] && [ -f "$main_root/rails/config/master.key" ]; then
+  cp "$main_root/rails/config/master.key" "$repo_root/rails/config/master.key"
+  echo "setup-worktree: copied rails/config/master.key from main checkout"
+fi
+
+(cd "$repo_root/astro" && pnpm install)
