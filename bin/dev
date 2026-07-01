@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# Launch the app locally on a fixed port (default 4321). The port is pinned
-# on purpose: it must match the Google OAuth callback URL
-# (http://localhost:4321/api/auth/callback/google) for sign-in to work. If the
-# port is already taken (e.g. a stale server or a sibling Conductor workspace),
-# we free it first so this workspace always owns it. Override with PORT=xxxx.
+# Launch the app locally on port 3000 (the Rails default). Google sign-in
+# only works if the OAuth client has this port's callback registered
+# (http://localhost:3000/api/auth/callback/google). If the port is already
+# taken (e.g. a stale server or a sibling Conductor workspace), we free it
+# first so this workspace always owns it. Override with PORT=xxxx.
 #
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-export PORT="${PORT:-4321}"
+export PORT="${PORT:-3000}"
 
 # Free the port: kill whatever is listening on it.
 pids="$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)"

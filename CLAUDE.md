@@ -13,7 +13,7 @@ Rails 8 app (Hotwire, SQLite, Kamal to Hetzner). Blog posts live in `content/blo
 
 # Dev server
 
-`bin/dev` — runs at http://localhost:4321 (port pinned for the Google OAuth callback). Production: https://antelo.io. Blog posts at `/blog/[slug]`.
+`bin/dev` — runs at http://localhost:3000. Google sign-in locally requires http://localhost:3000/api/auth/callback/google among the OAuth client redirect URIs. Production: https://antelo.io. Blog posts at `/blog/[slug]`.
 
 # CI and deploy
 

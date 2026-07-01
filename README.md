@@ -19,7 +19,7 @@ timesheet (`/timesheet`).
 
 ```bash
 bin/setup        # bundle + db:prepare
-bin/dev          # serves on http://localhost:4321 (pinned for Google OAuth)
+bin/dev          # serves on http://localhost:3000
 ```
 
 Secrets: Google client id/secret live in `config/credentials.yml.enc`
