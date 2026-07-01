@@ -14,13 +14,16 @@ Rails.application.routes.draw do
   get '/auth/failure', to: 'sessions#failure'
   get '/sign_out', to: 'sessions#destroy', as: :sign_out
 
-  get '/timesheet', to: 'timesheets#show', as: :timesheet
-  get '/timesheet/report', to: 'reports#show', as: :report
-
-  resources :projects, only: %i[create update destroy]
-  resources :locations, only: %i[create update destroy]
-  post '/time_entries', to: 'time_entries#upsert', as: :time_entries
-  post '/day_locations', to: 'day_locations#upsert', as: :day_locations
+  # Timesheet. Internal apps each get their own namespace; everything the app
+  # owns (routes, controllers, views) lives under it.
+  get '/timesheet', to: 'timesheet/weeks#show', as: :timesheet
+  namespace :timesheet do
+    get 'report', to: 'reports#show'
+    post 'time_entries', to: 'time_entries#upsert'
+    post 'day_locations', to: 'day_locations#upsert'
+    resources :projects, only: %i[create update destroy]
+    resources :locations, only: %i[create update destroy]
+  end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get 'up' => 'rails/health#show', :as => :rails_health_check

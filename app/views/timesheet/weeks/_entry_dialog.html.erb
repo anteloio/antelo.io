@@ -5,7 +5,7 @@
     <h2 class="text-sm font-semibold text-gray-900" data-timesheet-target="entryProjectName"></h2>
     <p class="text-xs text-gray-400 mb-4" data-timesheet-target="entryLabel"></p>
 
-    <%= form_with url: time_entries_path, data: { timesheet_target: "entryForm" } do %>
+    <%= form_with url: timesheet_time_entries_path, data: { timesheet_target: "entryForm" } do %>
       <input type="hidden" name="start" value="<%= params[:start] %>">
       <input type="hidden" name="project_id" data-timesheet-target="entryProjectId">
       <input type="hidden" name="date" data-timesheet-target="entryDate">

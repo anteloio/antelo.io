@@ -16,7 +16,7 @@ class ReportTest < ActionDispatch::IntegrationTest
     # Outside the month, must not count:
     @user.time_entries.create!(project: kali, date: Date.new(2026, 7, 1), hours: 8)
 
-    get report_path(month: '2026-06')
+    get timesheet_report_path(month: '2026-06')
     assert_response :success
     assert_includes response.body, 'june 2026'
     assert_includes response.body, '$960' # 8h * $120
@@ -25,7 +25,7 @@ class ReportTest < ActionDispatch::IntegrationTest
   end
 
   test 'empty month renders the empty state' do
-    get report_path(month: '1999-01')
+    get timesheet_report_path(month: '1999-01')
     assert_response :success
     assert_includes response.body, 'No hours logged in January 1999'
   end

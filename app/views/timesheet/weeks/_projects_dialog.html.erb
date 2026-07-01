@@ -15,7 +15,7 @@
         </div>
         <% @projects.each do |project| %>
           <div class="flex items-center gap-2">
-            <%= form_with url: project_path(project), method: :patch,
+            <%= form_with url: timesheet_project_path(project), method: :patch,
                   class: "flex-1 flex items-center gap-2", data: { keep_open: "projectsDialog" } do %>
               <input type="hidden" name="start" value="<%= params[:start] %>">
               <input type="text" name="project[name]" value="<%= project.name %>" required
@@ -31,7 +31,7 @@
             <% end %>
             <% count = @entry_counts[project.id] || 0 %>
             <% message = count == 0 ? "Delete this project?" : count == 1 ? "Delete this project and its 1 entry?" : "Delete this project and all its #{count} entries?" %>
-            <%= button_to "×", project_path(project, start: params[:start].presence),
+            <%= button_to "×", timesheet_project_path(project, start: params[:start].presence),
                   method: :delete,
                   form: { data: { turbo_confirm: message } },
                   aria: { label: "Delete #{project.name}" },
@@ -41,7 +41,7 @@
       </div>
     <% end %>
 
-    <%= form_with url: projects_path, class: "flex items-center gap-2 border-t border-gray-100 pt-4",
+    <%= form_with url: timesheet_projects_path, class: "flex items-center gap-2 border-t border-gray-100 pt-4",
           data: { keep_open: "projectsDialog" } do %>
       <input type="hidden" name="start" value="<%= params[:start] %>">
       <input type="text" name="project[name]" placeholder="New project name" required

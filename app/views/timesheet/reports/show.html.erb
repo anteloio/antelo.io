@@ -36,16 +36,16 @@
   <!-- Month navigation -->
   <div class="flex items-center gap-2 mb-4">
     <div class="inline-flex items-center h-9 rounded-lg border border-gray-300 overflow-hidden divide-x divide-gray-300">
-      <a href="<%= report_path(month: @month.prev_key) %>" aria-label="Previous month"
+      <a href="<%= timesheet_report_path(month: @month.prev_key) %>" aria-label="Previous month"
          class="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors">‹</a>
-      <a href="<%= report_path(month: @month.next_key) %>" aria-label="Next month"
+      <a href="<%= timesheet_report_path(month: @month.next_key) %>" aria-label="Next month"
          class="w-9 h-full inline-flex items-center justify-center text-lg text-gray-500 hover:bg-gray-50 transition-colors">›</a>
     </div>
     <div class="inline-flex items-center h-9 px-4 rounded-lg border border-gray-300 bg-white text-sm text-gray-700">
       <span class="font-medium tabular-nums"><%= @month.label %></span>
     </div>
     <% unless @month.current? %>
-      <a href="<%= report_path %>"
+      <a href="<%= timesheet_report_path %>"
          class="h-9 px-3 inline-flex items-center rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors">This month</a>
     <% end %>
   </div>

@@ -10,7 +10,7 @@
       <div class="flex flex-col gap-2 mb-4">
         <% @locations.each do |location| %>
           <div class="flex items-center gap-2">
-            <%= form_with url: location_path(location), method: :patch,
+            <%= form_with url: timesheet_location_path(location), method: :patch,
                   class: "flex-1", data: { keep_open: "locationsDialog" } do %>
               <input type="hidden" name="start" value="<%= params[:start] %>">
               <input type="text" name="location[name]" value="<%= location.name %>" required
@@ -19,7 +19,7 @@
             <% end %>
             <% count = @location_counts[location.id] || 0 %>
             <% message = count == 0 ? "Delete this location?" : count == 1 ? "Delete this location? It is set on 1 day." : "Delete this location? It is set on #{count} days." %>
-            <%= button_to "×", location_path(location, start: params[:start].presence),
+            <%= button_to "×", timesheet_location_path(location, start: params[:start].presence),
                   method: :delete,
                   form: { data: { turbo_confirm: message } },
                   aria: { label: "Delete #{location.name}" },
@@ -29,7 +29,7 @@
       </div>
     <% end %>
 
-    <%= form_with url: locations_path, class: "flex items-center gap-2 border-t border-gray-100 pt-4",
+    <%= form_with url: timesheet_locations_path, class: "flex items-center gap-2 border-t border-gray-100 pt-4",
           data: { keep_open: "locationsDialog" } do %>
       <input type="hidden" name="start" value="<%= params[:start] %>">
       <input type="text" name="location[name]" placeholder="New location name" required

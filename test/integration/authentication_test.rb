@@ -5,7 +5,7 @@ class AuthenticationTest < ActionDispatch::IntegrationTest
     get timesheet_path
     assert_redirected_to login_path
 
-    get report_path
+    get timesheet_report_path
     assert_redirected_to login_path
   end
 

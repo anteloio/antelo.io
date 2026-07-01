@@ -5,7 +5,7 @@
     <h2 class="text-sm font-semibold text-gray-900">Location</h2>
     <p class="text-xs text-gray-400 mb-4" data-timesheet-target="locationLabel"></p>
 
-    <%= form_with url: day_locations_path, data: { timesheet_target: "locationForm" }, class: "hidden" do %>
+    <%= form_with url: timesheet_day_locations_path, data: { timesheet_target: "locationForm" }, class: "hidden" do %>
       <input type="hidden" name="start" value="<%= params[:start] %>">
       <input type="hidden" name="date" data-timesheet-target="locationDate">
       <input type="hidden" name="location_id" data-timesheet-target="locationId">
