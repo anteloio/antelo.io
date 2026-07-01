@@ -37,6 +37,7 @@ if (session) return Astro.redirect("/timesheet")
       </svg>
       Sign in with Google
     </button>
+    <p id="signin-error" class="mt-4 text-sm text-red-500 hidden" role="alert"></p>
   </section>
 </Layout>
 
@@ -44,8 +45,27 @@ if (session) return Astro.redirect("/timesheet")
   import { authClient } from "../lib/auth-client"
 
   const btn = document.getElementById("google-signin") as HTMLButtonElement | null
+  const errEl = document.getElementById("signin-error")
+
+  const showError = (msg: string) => {
+    if (!errEl) return
+    errEl.textContent = msg
+    errEl.classList.remove("hidden")
+  }
+
   btn?.addEventListener("click", async () => {
     btn.disabled = true
-    await authClient.signIn.social({ provider: "google", callbackURL: "/timesheet" })
+    errEl?.classList.add("hidden")
+    try {
+      const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/timesheet" })
+      if (error) {
+        btn.disabled = false
+        showError(error.message || "Could not sign in. Please try again.")
+      }
+      // On success the client redirects to Google, so no further handling here.
+    } catch {
+      btn.disabled = false
+      showError("Could not reach the server. Please try again.")
+    }
   })
 </script>
