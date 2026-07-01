@@ -33,14 +33,14 @@ Copy it and let's update our config/deploy.yml file on Rails.
 ## Update config/deploy.yml
 
 ```yaml
-image: {your_docker_username}/{your_project_name}
+image: {your_project_name}
 
 servers:
   web:
     - 192.168.0.1 # <-- USE YOUR IP HERE
 
 registry:
-  username: {your_docker_username}
+  server: localhost:5555
 
 ...
 
@@ -50,6 +50,19 @@ builder:
 ```
 
 Note that the remote is not present in your deploy.yml by default. We're adding it to avoid painful compatibility issues, namely when you're working from anything other than Linux. This will use the remote server to build your app, ensuring it's perfectly compatible with its production env.
+
+About the registry: since Kamal 2.12 (what Rails 8.1 ships), `server: localhost:5555` gives you a registry that Kamal runs itself. No Docker Hub account, no access token, no `KAMAL_REGISTRY_PASSWORD`. Kamal boots a registry container on your machine and the server pulls images through an SSH tunnel. One catch: your local Docker daemon has to be running, even with a remote builder, because that registry container runs locally.
+
+On older Kamal, use Docker Hub instead:
+
+```yaml
+image: {your_docker_username}/{your_project_name}
+
+registry:
+  username: {your_docker_username}
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+```
 
 Now you can setup the server: (this might take a few minutes)
 

@@ -106,10 +106,10 @@ Rails.application.routes.draw do
 end
 ```
 
-Create your Omniauth initializer file:
+Create your Omniauth initializer file. It has to live inside `config/initializers`, or Rails never loads it:
 
 ```ruby
-# config/omniauth.rb
+# config/initializers/omniauth.rb
 
 Rails.application.config.middleware.use OmniAuth::Builder do
   provider :google_oauth2,
@@ -118,7 +118,10 @@ Rails.application.config.middleware.use OmniAuth::Builder do
 end
 
 OmniAuth.config.allowed_request_methods = %i[get]
+OmniAuth.config.silence_get_warning = true
 ```
+
+The last line matters because OmniAuth 2 logs a warning on every boot when GET is allowed. You made that call on purpose, no need to hear about it forever.
 
 On your controller, handle sign in, sign out, and eventual failures:
 

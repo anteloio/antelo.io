@@ -48,6 +48,27 @@ inherit_gem:
   syntax_tree: config/rubocop.yml
 ```
 
+There is a catch I only hit in practice. That file assumes Syntax Tree's defaults, and the default is double quotes. Our `.streerc` turned on the `single_quotes` and `trailing_comma` plugins, so RuboCop and the formatter now disagree on every string in the project. Align the overlapping cops with the plugins you enabled:
+
+```yaml
+inherit_gem:
+  syntax_tree: config/rubocop.yml
+
+# Match the .streerc plugins, or RuboCop fights the formatter.
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: single_quotes
+Style/TrailingCommaInArguments:
+  EnforcedStyle: consistent_comma
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyle: consistent_comma
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyle: consistent_comma
+```
+
+Run `bin/rubocop` once after setting this up. If it flags hundreds of strings, the two tools are still not aligned.
+
 ## Install the VS Code extension
 
 Probably the easiest step. You'll also need one extension from the VS Code marketplace: [ruby-syntax-tree.vscode-syntax-tree](https://marketplace.visualstudio.com/items?itemName=ruby-syntax-tree.vscode-syntax-tree)
