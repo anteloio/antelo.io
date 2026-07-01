@@ -1,35 +1,52 @@
 # antelo.io
 
-Personal portfolio and blog. Built with [Astro](https://astro.build) and Tailwind CSS.
+Rails 8 app behind antelo.io: landing page, blog, tweet queue (`/x`) and the
+timesheet (`/timesheet`).
+
+## Stack
+
+- Rails 8.1, Hotwire (Turbo + Stimulus), importmaps, no Node build.
+- Tailwind CSS via tailwindcss-rails.
+- SQLite in every environment. Database files live in `storage/`.
+- Google sign-in with OmniAuth, no Devise
+  (see /blog/google-sign-in-rails-without-devise).
+- Blog posts and tweets are markdown files in `content/`, read by PORO models
+  (`Post`, `Tweet`). No content in the database.
+- Formatting: Syntax Tree (`bundle exec stree write ...`, config in `.streerc`),
+  RuboCop aligned with it (see /blog/rails-auto-formatting-on-vscode).
 
 ## Run locally
 
-Requires Node 18+ and [pnpm](https://pnpm.io).
-
 ```bash
-pnpm install     # install dependencies
-pnpm dev         # start the dev server at http://localhost:4321
+bin/setup        # bundle + db:prepare
+bin/dev          # serves on http://localhost:3000
 ```
 
-Other commands:
+Secrets: Google client id/secret live in `config/credentials.yml.enc`
+(`bin/rails credentials:edit`, requires the gitignored `config/master.key`).
+
+## Tests and CI
 
 ```bash
-pnpm build       # build the static site into dist/
-pnpm preview     # serve the built site locally to check the production output
+bin/ci           # rubocop, bundler-audit, importmap audit, brakeman, tests
 ```
 
-## Project structure
+## Deploy (Hetzner + Kamal)
 
-- `src/pages/` — routes (`index.astro` is the landing page)
-- `src/content/blog/` — blog posts as Markdown
-- `src/layouts/` — shared page layout
-- `public/` — static assets served as-is (avatar, project screenshots in `public/work/`)
+Follows /blog/deploying-rails-with-kamal and /blog/deploying-to-one-vm.
+The app runs on a single Hetzner VM with Kamal's built-in local registry
+(no Docker Hub), remote amd64 builder and SQLite on the `antelo_storage`
+volume:
 
-## Deploy
+```bash
+bin/kamal deploy   # local Docker daemon must be running
+```
 
-Deployment is automatic through Vercel.
+Back up the SQLite files off the server (e.g. a daily cron to Hetzner
+Object Storage).
 
-- Pushing to `main` triggers a production deploy to **antelo.io**.
-- Every other branch and pull request gets its own Vercel preview URL.
+## History
 
-No manual steps. Merge to `main` and the live site updates on its own.
+Until July 2026 this site was an Astro app deployed on Vercel with Turso
+(see the git history before the Rails migration). `lib/tasks/legacy.rake`
+holds the one-time importer that pulled the Turso data into SQLite.

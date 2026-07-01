@@ -1,0 +1,39 @@
+<dialog class="rounded-2xl p-0 shadow-2xl backdrop:bg-gray-900/40 w-[90vw] max-w-[18rem]"
+        data-timesheet-target="locationDialog" data-action="click->timesheet#backdropClose">
+  <div class="relative p-5">
+    <%= render "close_button" %>
+    <h2 class="text-sm font-semibold text-gray-900">Location</h2>
+    <p class="text-xs text-gray-400 mb-4" data-timesheet-target="locationLabel"></p>
+
+    <%= form_with url: timesheet_day_locations_path, data: { timesheet_target: "locationForm" }, class: "hidden" do %>
+      <input type="hidden" name="start" value="<%= params[:start] %>">
+      <input type="hidden" name="date" data-timesheet-target="locationDate">
+      <input type="hidden" name="location_id" data-timesheet-target="locationId">
+    <% end %>
+
+    <% if @locations.empty? %>
+      <p class="text-sm text-gray-400 mb-2">No locations yet. Create one with "Manage locations".</p>
+    <% else %>
+      <div class="flex flex-col gap-1.5 mb-2">
+        <% @locations.each do |location| %>
+          <button type="button" data-action="timesheet#setDayLocation"
+                  data-timesheet-target="locationOption" data-location-id="<%= location.id %>"
+                  class="w-full text-left text-sm px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-colors">
+            <%= location.name %>
+          </button>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="flex justify-between items-center border-t border-gray-100 mt-3 pt-3">
+      <button type="button" data-action="timesheet#clearDayLocation" data-timesheet-target="locationClear"
+              class="text-xs text-gray-400 hover:text-red-500 transition-colors">
+        Clear
+      </button>
+      <button type="button" data-action="timesheet#closeDialogs"
+              class="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        Cancel
+      </button>
+    </div>
+  </div>
+</dialog>

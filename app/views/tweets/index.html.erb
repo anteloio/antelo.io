@@ -1,0 +1,50 @@
+<% content_for :title, "Queue · Flavio Antelo" %>
+<% content_for :description, "Tweet queue." %>
+<% content_for :noindex, true %>
+
+<section class="max-w-3xl mx-auto px-6 pt-20 pb-16">
+  <h1 class="text-2xl font-semibold text-gray-900 mb-2">Tweet queue</h1>
+  <p class="text-gray-500 mb-16">
+    <%= @queued_count %> queued. Click <span class="font-medium text-gray-700">Post on X</span> to open the composer,
+    then <span class="font-medium text-gray-700">Mark as sent</span> once it's live.
+  </p>
+
+  <% if @tweets.empty? %>
+    <div class="text-center py-20 text-gray-400">
+      <p class="text-sm">Queue is empty.</p>
+    </div>
+  <% else %>
+    <div class="grid gap-6">
+      <% @tweets.each do |tweet| %>
+        <article class="rounded-2xl border p-5 transition-colors <%= tweet.sent? ? "border-gray-100 bg-gray-50 opacity-60" : "border-gray-200 bg-white" %>">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-medium text-gray-400">
+              <%= tweet.scheduled_at.strftime(tweet.timed? ? "%a, %b %-d, %I:%M %p" : "%a, %b %-d") %>
+              <% if tweet.sent? %><span class="ml-2 text-green-600">· sent</span><% end %>
+              <% if tweet.past_due? %><span class="ml-2 text-amber-500">· past</span><% end %>
+            </p>
+            <span class="text-xs tabular-nums <%= tweet.character_count > 280 ? "text-red-500 font-semibold" : "text-gray-400" %>">
+              <%= tweet.character_count %>/280
+            </span>
+          </div>
+
+          <p class="text-[15px] leading-relaxed whitespace-pre-line mb-4 <%= tweet.sent? ? "text-gray-400 line-through decoration-gray-300" : "text-gray-900" %>">
+            <%= tweet.text %>
+          </p>
+
+          <div class="flex items-center gap-3">
+            <% unless tweet.sent? %>
+              <a href="<%= tweet.intent_url %>"
+                 class="inline-flex items-center gap-2 text-sm bg-black text-white px-4 py-1.5 rounded-full hover:bg-gray-800 transition-colors">
+                Post on X<span aria-hidden="true">→</span>
+              </a>
+            <% end %>
+            <%= button_to tweet.sent? ? "Undo" : "Mark as sent",
+                  toggle_sent_tweet_path(tweet, sent: tweet.sent? ? "" : "true"),
+                  class: "text-sm px-4 py-1.5 rounded-full border transition-colors cursor-pointer #{tweet.sent? ? "border-gray-200 text-gray-500 hover:bg-gray-100" : "border-gray-300 text-gray-700 hover:bg-gray-50"}" %>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+</section>

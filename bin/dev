@@ -1,24 +1,21 @@
 #!/usr/bin/env bash
 #
-# Launch the project locally on a fixed port (default 4321). The port is pinned
-# on purpose: it must match BETTER_AUTH_URL and the Google OAuth callback URL
-# (http://localhost:4321/api/auth/callback/google) for sign-in to work. If the
-# port is already taken (e.g. a stale server or a sibling Conductor workspace),
-# we free it first so this workspace always owns it. Override with PORT=xxxx.
-#
-# Extra args are passed through to `astro dev` (e.g. bin/dev --host).
+# Launch the app locally on port 3000 (the Rails default). Google sign-in
+# only works if the OAuth client has this port's callback registered
+# (http://localhost:3000/api/auth/callback/google). If the port is already
+# taken (e.g. a stale server or a sibling Conductor workspace), we free it
+# first so this workspace always owns it. Override with PORT=xxxx.
 #
 set -euo pipefail
 
-repo_root="$(git rev-parse --show-toplevel)"
-cd "$repo_root"
+cd "$(dirname "$0")/.."
 
-PORT="${PORT:-4321}"
+export PORT="${PORT:-3000}"
 
 # Free the port: kill whatever is listening on it.
 pids="$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)"
 if [ -n "$pids" ]; then
-  echo "bin/dev: port $PORT in use by PID(s) $pids — freeing it"
+  echo "bin/dev: port $PORT in use by PID(s) $pids - freeing it"
   kill $pids 2>/dev/null || true
   sleep 0.5
   # Escalate if anything is still holding the port.
@@ -26,10 +23,17 @@ if [ -n "$pids" ]; then
   [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
 fi
 
-# Install dependencies if node_modules is missing.
-if [ ! -d node_modules ]; then
-  echo "bin/dev: installing dependencies..."
-  pnpm install
+if ! gem list foreman -i --silent; then
+  echo "Installing foreman..."
+  gem install foreman
 fi
 
-exec pnpm dev --port "$PORT" "$@"
+bundle check >/dev/null 2>&1 || bundle install
+bin/rails db:prepare
+
+# Let the debug gem allow remote connections,
+# but avoid loading until `debugger` is called
+export RUBY_DEBUG_OPEN="true"
+export RUBY_DEBUG_LAZY="true"
+
+exec foreman start -f Procfile.dev "$@"

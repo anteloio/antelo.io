@@ -21,5 +21,5 @@ A good piece reads like a field report — something observed, built, or learned
 Before writing, read the tweets archive for live voice calibration:
 
 ```bash
-for f in src/content/tweets/*.md; do echo "---"; cat "$f"; done
+for f in content/tweets/*.md; do echo "---"; cat "$f"; done
 ```
